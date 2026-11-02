@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+@import url("https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&display=swap");
+
+:root {
+  --primary: #4f6ae8;
+  --primary-dark: #3b52c4;
+  --primary-soft: #eef1ff;
+  --bg-app: #f4f5fd;
+  --bg-page: #d9dafb;
+  --surface: #ffffff;
+  --text: #1f2547;
+  --text-muted: #8a90b0;
+  --border: #e6e8f5;
+  --success: #2fb67c;
+  --success-soft: #edfaf4;
+  --warning: #f5a524;
+  --warning-soft: #fff8ec;
+  --danger: #e5484d;
+  --danger-soft: #fff0f0;
+  --radius-card: 16px;
+  --radius-control: 12px;
+}
+
+@theme inline {
+  --color-primary: var(--primary);
+  --color-primary-dark: var(--primary-dark);
+  --color-primary-soft: var(--primary-soft);
+  --color-bg-app: var(--bg-app);
+  --color-bg-page: var(--bg-page);
+  --color-surface: var(--surface);
+  --color-app-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-border: var(--border);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --font-rubik: "Rubik", "Inter", system-ui, sans-serif;
+  --radius-card: var(--radius-card);
+  --radius-control: var(--radius-control);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--bg-app);
+  color: var(--text);
+  font-family: "Rubik", "Inter", system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Focus ring */
+*:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-app);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}

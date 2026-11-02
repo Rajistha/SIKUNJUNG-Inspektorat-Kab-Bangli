@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="100%" height="100%" fill="none">
+  <defs>
+    <!-- Premium Royal Cobalt to Indigo Gradient -->
+    <linearGradient id="sBadgeGrad" x1="10%" y1="10%" x2="90%" y2="90%">
+      <stop offset="0%" stop-color="#4F6AE8" />
+      <stop offset="50%" stop-color="#3B52C4" />
+      <stop offset="100%" stop-color="#283A97" />
+    </linearGradient>
+
+    <!-- Inner Border Glow -->
+    <linearGradient id="sGlow" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.35" />
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.05" />
+    </linearGradient>
+
+    <!-- Drop Shadow for the "S" -->
+    <filter id="sDropShadow" x="-15%" y="-15%" width="130%" height="130%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="5" stdDeviation="6" flood-color="#0E1644" flood-opacity="0.35" />
+    </filter>
+  </defs>
+
+  <!-- Squircle Base Frame -->
+  <rect x="14" y="14" width="172" height="172" rx="42" fill="url(#sBadgeGrad)" />
+  <rect x="14" y="14" width="172" height="172" rx="42" stroke="url(#sGlow)" stroke-width="1.5" />
+
+  <!-- Iconic Bold Letter "S" -->
+  <g filter="url(#sDropShadow)">
+    <path
+      d="M 134 68
+         C 134 52 118 46 100 46
+         C 78 46 62 58 62 76
+         C 62 96 82 103 104 109
+         C 126 115 138 124 138 140
+         C 138 158 122 168 100 168
+         C 78 168 62 156 62 140"
+      stroke="#FFFFFF"
+      stroke-width="22"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      fill="none"
+    />
+  </g>
+</svg>

@@ -1,7 +1,5 @@
 @import "tailwindcss";
 
-@import url("https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&display=swap");
-
 :root {
   --primary: #4f6ae8;
   --primary-dark: #3b52c4;
@@ -38,7 +36,6 @@
   --color-warning-soft: var(--warning-soft);
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
-  --font-rubik: "Rubik", "Inter", system-ui, sans-serif;
   --radius-card: var(--radius-card);
   --radius-control: var(--radius-control);
 }
@@ -50,7 +47,6 @@
 body {
   background: var(--bg-app);
   color: var(--text);
-  font-family: "Rubik", "Inter", system-ui, sans-serif;
   font-size: 16px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
@@ -76,4 +72,51 @@ body {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-muted);
+}
+
+/* Print Optimization for Standee & Reports */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm auto;
+  }
+
+  html, body {
+    background: #ffffff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: auto !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* When printing standee: hide all page chrome and show only the standee card centered */
+  body:has(#printable-standee) * {
+    visibility: hidden;
+  }
+
+  #printable-standee,
+  #printable-standee * {
+    visibility: visible !important;
+  }
+
+  #printable-standee {
+    position: absolute !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: 0 !important;
+    margin: 0 auto !important;
+    width: 100% !important;
+    max-width: 520px !important;
+    padding: 28px !important;
+    border: 2px solid #E6E8F5 !important;
+    border-radius: 24px !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    page-break-inside: avoid !important;
+  }
 }

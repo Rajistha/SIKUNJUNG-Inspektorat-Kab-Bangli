@@ -33,6 +33,20 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# AI & assistant tooling
+AGENTS.md
+agents.md
+.gemini/
+.cursor/
+.claude/
+*.prompt
+*.agent
+
+# Internal spec & design docs
+ERD.md
+PRD.md
+design.md
+
 # vercel
 .vercel
 

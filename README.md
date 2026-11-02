@@ -1,135 +1,80 @@
-# SIKUNJUNG - Buku Tamu Digital Inspektorat Kabupaten Bangli
+# SIKUNJUNG
 
-Sistem Informasi Kunjungan (SIKUNJUNG) berbasis web untuk Inspektorat Daerah Pemerintah Kabupaten Bangli. Dibangun berdasarkan spesifikasi [PRD.md](PRD.md), [design.md](design.md), dan [ERD.md](ERD.md).
+### Sistem Informasi Kunjungan Tamu Digital
 
----
-
-## 🌟 Fitur Utama
-
-1. **Jalur Publik Tamu (Mobile-First via QR Code)**
-   - Akses instan tanpa login via scan QR di meja resepsionis (`/tamu`).
-   - Pengisian form cepat (< 30 detik): Nama lengkap, No. telepon (opsional), Pilihan asal Instansi/OPD (dengan opsi *Lainnya*), Bidang tujuan, Keperluan, dan Jumlah tamu rombongan.
-   - Layar sukses dengan **Nomor Urut Kunjungan Harian besar** (contoh `#001`, `#014`) dan instruksi langsung lapor ke resepsionis untuk foto kehadiran.
-   - Bebas upload file / foto di sisi tamu (mencegah manipulasi & spam).
-
-2. **Jalur Petugas Resepsionis & Dashboard Pengawasan**
-   - Banner sapaan dinamis bergaya *Hireism* dengan peringatan antrean tamu yang belum difoto.
-   - 3 Kartu Ringkasan real-time: **Tamu Hari Ini**, **Menunggu Foto**, dan **Tercatat Sah**.
-   - Tabel Tamu Hari Ini dengan prioritas status: tamu *Menunggu foto* otomatis berada di baris paling atas dengan latar kuning lembut.
-   - Tombol **+ Tambah Tamu** langsung dari dashboard untuk tamu yang didaftarkan langsung oleh petugas.
-
-3. **Pengambilan Foto Kehadiran Langsung Kamera (WebRTC)**
-   - Hanya dapat diambil oleh Petugas yang telah login (`/dashboard/foto/[id]`).
-   - Menggunakan API kamera browser (`getUserMedia`) dengan tombol ganti kamera depan/belakang (*facing mode*).
-   - Mendukung hingga 5 foto per kunjungan dengan thumbnail & tombol hapus/ulang.
-   - Kompresi foto otomatis di sisi klien (~200–400 KB JPEG).
-   - Begitu minimal 1 foto tersimpan, status otomatis berubah menjadi **Tercatat**.
-
-4. **Detail Kunjungan & Galeri Bukti**
-   - Halaman detail lengkap (`/dashboard/detail/[id]`): menampilkan nomor telepon asli, tombol klik langsung chat WhatsApp, riwayat waktu server, dan persetujuan UU PDP.
-   - Galeri foto resolusi penuh dengan mode *lightbox zoom*.
-   - Fitur koreksi salah ketik data tamu (*Edit*).
-   - Hak hapus permanen hanya untuk Administrator.
-
-5. **Rekap Bulanan & Export Excel (SheetJS)**
-   - Halaman rekap (`/dashboard/rekap`) dengan filter rentang tanggal, filter instansi, dan pencarian kata kunci.
-   - Satu klik unduh format Excel (`.xlsx`) resmi sesuai kolom standar laporan inspektorat ke pimpinan.
-
-6. **QR Standee Meja Resepsionis**
-   - Halaman cetak QR (`/dashboard/qr`) beresolusi tinggi (800px).
-   - Desain kartu akrilik standee resmi berlogo Inspektorat Bangli, siap cetak ke format kertas A4 (`Ctrl+P` / tombol Cetak).
-
-7. **Kelola Master Data & Akun (Admin IT)**
-   - Master Data Instansi (`/dashboard/instansi`): tambah, ubah nama, aktifkan/nonaktifkan OPD.
-   - Master Data Bidang (`/dashboard/bidang`): kelola urutan Sekretariat, Irban I s/d IV, dan Bidang Investigasi.
-   - Manajemen Akun Staf (`/dashboard/pengguna`): tambah akun petugas baru, nonaktifkan, dan reset sandi.
+**Inspektorat Daerah Pemerintah Kabupaten Bangli**
 
 ---
 
-## 🚀 Cara Menjalankan
+## Ringkasan Sistem
 
-### 1. Menjalankan Server Development
+**SIKUNJUNG** (Sistem Informasi Kunjungan) adalah platform buku tamu digital resmi yang dirancang khusus untuk memenuhi standar tata kelola pengawasan, akuntabilitas, dan transparansi di lingkungan **Inspektorat Daerah Kabupaten Bangli**.
 
-```bash
-npm run dev
-```
-
-Buka peramban di: **[http://localhost:3000](http://localhost:3000)**
+Sistem ini menggantikan pencatatan buku tamu konvensional berbasis kertas menjadi sistem digital terintegrasi yang dilengkapi dengan pencatatan nomor antrean harian otomatis, verifikasi kehadiran fisik berbasis foto instan, pelaporan rekapitulasi eksekutif berstandar kedinasan, serta integrasi kode QR meja resepsionis.
 
 ---
 
-## 🔐 Akun Pengujian (Demo Mode)
+## Fitur Utama & Modul Sistem
 
-Aplikasi telah dilengkapi **Dual-Mode**:
-- **Mode Demo / Offline**: Berjalan langsung tanpa konfigurasi database eksternal menggunakan in-memory mock store.
-- **Mode Supabase**: Aktif otomatis saat variabel kredensial di `.env.local` terisi.
+### 1. Pelayanan Mandiri Tamu (Mobile QR Check-In)
 
-Untuk mencoba login ke dashboard (`/login`), Anda dapat langsung menggunakan tombol cepat atau kredensial berikut:
+- **Akses Cepat & Efisien**: Tamu cukup memindai kode QR yang tersedia di meja resepsionis tanpa perlu memasang aplikasi tambahan (_zero-install_).
+- **Formulir Terstandar**: Pengisian data cepat (< 30 detik) mencakup nama lengkap, nomor kontak, asal instansi/OPD (termasuk opsi mandiri untuk masyarakat umum), bidang/pejabat yang dituju, keperluan kunjungan, serta komposisi jumlah tamu.
+- **Nomor Antrean Harian Otomatis**: Setelah pengisian formulir, tamu menerima nomor antrean harian (misal: `#001`, `#002`) yang tereset otomatis setiap pergantian hari pukul 00:00 WITA.
+- **Kepatuhan Privasi Data**: Dilengkapi pernyataan persetujuan penggunaan data sesuai Undang-Undang Perlindungan Data Pribadi (UU PDP).
 
-| Peran | Email | Kata Sandi | Akses |
-|---|---|---|---|
-| **Petugas Resepsionis** | `petugas@bangli.go.id` | `petugas123` | Dashboard, ambil foto, detail, rekap Excel, cetak QR |
-| **Administrator IT** | `admin@bangli.go.id` | `inspektorat234!` | Semua fitur petugas + Master Instansi, Bidang, Pengguna, dan Hapus data |
+### 2. Meja Kerja & Verifikasi Petugas
+
+- **Dashboard Operasional Harian**: Memantau seluruh arus tamu secara _real-time_ dengan kategorisasi status yang jelas (_Tercatat Sah_ dan _Menunggu Foto_).
+- **Pengambilan Bukti Foto Fisik (WebRTC)**: Resepsionis atau petugas yang berwenang mengambil foto kehadiran fisik tamu langsung melalui kamera perangkat untuk mencegah manipulasi dan memastikan keabsahan kunjungan.
+- **Komunikasi Terintegrasi**: Tersedia tautan langsung untuk menghubungi nomor tamu via WhatsApp dalam satu klik jika diperlukan koordinasi tindak lanjut.
+
+### 3. Arsip Berkas Digital (Cloud Storage Explorer)
+
+- **Struktur Berbasis Folder Tamu**: Berkas bukti foto kehadiran tersimpan secara rapi dan dikelompokkan ke dalam folder masing-masing tamu berdasarkan nama, instansi, dan tanggal kunjungan.
+- **Pratinjau & Unduh Cepat**: Dilengkapi fitur _lightbox zoom_ resolusi tinggi, opsi unduh foto satuan, serta unduh seluruh foto tamu sekaligus (_batch download_).
+- **Pemantauan Kapasitas Real-time**: Indikator visual pemakaian kapasitas penyimpanan (_storage quota tracking_) dengan perhitungan sisa ruang secara akurat.
+
+### 4. Pelaporan Eksekutif & Rekapitulasi Terpadu
+
+- **Filter Multi-Kriteria**: Penyaringan riwayat kunjungan lintas rentang tanggal (harian, mingguan, bulanan, maupun periode kustom), OPD instansi asal, bidang tujuan, dan status kehadiran.
+- **Ekspor Dokumen Excel (.xlsx) Resmi**: Dilengkapi format resmi kedinasan, kop instansi Pemerintah Kabupaten Bangli, stempel waktu unduh, lebar kolom proporsional, serta baris total kalkulasi.
+- **Ekspor Laporan PDF (.pdf) Formal**: Berformat _A4 Landscape_ dengan kop surat resmi Inspektorat Daerah Kabupaten Bangli, tabel terstruktur, penomoran halaman otomatis, dan kolom tanda tangan pengesahan pejabat pengelola.
+
+### 5. Media Standee Meja Resepsionis
+
+- **Desain Siap Cetak (A4 Acrylic Insert)**: Tata letak resmi dan elegan berlogo kedinasan, dilengkapi kode QR vektor beresolusi tinggi (300 DPI) untuk dipasang pada akrilik meja tamu resepsionis kantor Inspektorat.
+- **Fitur Ekspor PNG**: Memungkinkan pengunduhan desain standee dalam format gambar utuh untuk keperluan pencetakan digital.
+
+### 6. Keamanan & Tata Kelola Pengguna
+
+- **Hak Akses Berjenjang (RBAC)**:
+  - **Petugas**: Pengawasan antrean harian, pencatatan tamu langsung, pemotretan kehadiran, dan rekapitulasi data.
+  - **Admin**: Seluruh kewenangan petugas ditambah pengelolaan master data instansi, pembagian bidang kerja, manajemen akun staf, dan audit berkas.
+- **Penyimpanan Terisolasi**: File bukti foto disimpan dalam wadah privat (_private storage bucket_) dengan token URL bertanda tangan temporer untuk mencegah akses tidak sah dari pihak luar.
 
 ---
 
-## 🗄️ Menghubungkan ke Supabase (Produksi)
+## Arsitektur & Teknologi
 
-1. Buat proyek baru di [Supabase](https://supabase.com).
-2. Buka menu **SQL Editor** di Supabase, lalu jalankan script yang telah disediakan pada file:
-   [`supabase/schema.sql`](supabase/schema.sql)
-3. Buat storage bucket privat dengan nama `foto-kehadiran`.
-4. Salin URL dan anon key ke file `.env.local`:
-   ```env
-   NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-   ```
-5. Restart server Next.js (`npm run dev` atau `npm run build && npm run start`).
+| Komponen                        | Spesifikasi / Teknologi                           |
+| ------------------------------- | ------------------------------------------------- |
+| **Kerangka Kerja (Framework)**  | Next.js (App Router, Server Actions, & Turbopack) |
+| **Bahasa Pemrograman**          | TypeScript                                        |
+| **Tata Letak & Gaya (Styling)** | Tailwind CSS                                      |
+| **Basis Data & Autentikasi**    | PostgreSQL & Supabase Engine                      |
+| **Penyimpanan Cloud**           | Supabase Storage (Private Encrypted Bucket)       |
+| **Mesin Pembuat PDF**           | jsPDF & jsPDF-AutoTable                           |
+| **Mesin Pembuat Lembar Kerja**  | SheetJS (XLSX Engine)                             |
+| **Kamera & Pemindaian**         | WebRTC Media Capture & QR Engine                  |
+| **Zona Waktu Sistem**           | WITA (Waktu Indonesia Tengah / UTC+8)             |
 
 ---
 
-## 📁 Struktur Direktori
+## Kepemilikan & Hak Cipta
 
-```text
-SIKUNJUNG/
-├── design.md                  # Panduan desain UI/UX & Design Tokens
-├── PRD.md                     # Product Requirement Document
-├── ERD.md                     # Entity Relationship Diagram
-├── supabase/
-│   └── schema.sql             # SQL Migration lengkap (Tabel, RLS, Trigger, Seed)
-├── src/
-│   ├── app/
-│   │   ├── layout.tsx         # Root layout dengan Font Rubik & Toaster
-│   │   ├── globals.css        # Tailwind v4 theme & token warna
-│   │   ├── page.tsx           # Halaman pemilih portal (Tamu / Petugas)
-│   │   ├── login/             # Halaman login petugas/admin
-│   │   ├── tamu/
-│   │   │   ├── page.tsx       # Form publik tamu via QR
-│   │   │   └── selesai/       # Layar sukses nomor urut (#014)
-│   │   └── dashboard/
-│   │       ├── page.tsx       # Dashboard tamu hari ini
-│   │       ├── layout.tsx     # Shell dashboard (Sidebar 240px + Topbar)
-│   │       ├── foto/[id]/     # Kamera pemotretan kehadiran (WebRTC)
-│   │       ├── detail/[id]/   # Detail kunjungan, WhatsApp, & lightbox
-│   │       ├── rekap/         # Filter tanggal & Export Excel
-│   │       ├── qr/            # Tampilan & cetak QR akrilik meja
-│   │       ├── instansi/      # Master data OPD / Instansi
-│   │       ├── bidang/        # Master data Bidang / Irban
-│   │       └── pengguna/      # Manajemen akun staf
-│   ├── components/
-│   │   ├── ui/                # Tombol, Input, Select, Badge, Card, Dialog
-│   │   ├── layout/            # Sidebar responsive & Header
-│   │   ├── kunjungan/         # KunjunganForm, CameraCapture, Detail
-│   │   ├── rekap/             # RekapClient & export SheetJS
-│   │   ├── qr/                # QrDisplayClient generator
-│   │   └── master/            # InstansiClient, BidangClient, PenggunaClient
-│   └── lib/
-│       ├── types.ts           # TypeScript interfaces & enums
-│       ├── utils.ts           # Helper tanggal ID, format nomor urut, kompresi
-│       ├── store.ts           # In-memory data store fallback
-│       ├── mock-data.ts       # Data awal instansi, bidang, & kunjungan Bangli
-│       ├── supabase/          # Supabase client, server, & middleware
-│       └── actions/           # Server actions (auth, kunjungan, foto, master)
-└── package.json
-```
+Aplikasi ini dikembangkan untuk:
+**Inspektorat Daerah Pemerintah Kabupaten Bangli**  
+Jl. Brigjen Ngurah Rai No. 30, Bangli, Bali 80613
+
+_Mewujudkan Pelayanan Publik yang Transparan, Akuntabel, dan Berintegritas._

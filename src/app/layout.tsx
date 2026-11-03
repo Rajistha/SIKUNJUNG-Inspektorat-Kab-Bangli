@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Rubik } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
@@ -9,6 +9,12 @@ const rubik = Rubik({
   variable: "--font-rubik",
   display: "swap",
 });
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#4F6AE8",
+};
 
 export const metadata: Metadata = {
   title: "SIKUNJUNG - Buku Tamu Digital Inspektorat Kabupaten Bangli",

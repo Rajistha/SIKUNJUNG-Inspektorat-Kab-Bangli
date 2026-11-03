@@ -48,24 +48,25 @@ export function Dialog({
       {/* Modal Dialog Box */}
       <div
         className={cn(
-          "relative z-10 w-full max-w-lg bg-white rounded-[16px] shadow-2xl border border-[#E6E8F5] p-6 overflow-hidden animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col",
+          "relative z-10 w-full max-w-lg bg-white rounded-[18px] sm:rounded-[20px] shadow-2xl border border-[#E6E8F5] p-4 sm:p-6 overflow-hidden animate-in fade-in zoom-in-95 duration-200 max-h-[92vh] flex flex-col",
           className
         )}
       >
-        <div className="flex items-start justify-between pb-4 border-b border-[#E6E8F5]">
-          <div>
-            <h3 className="text-lg font-semibold text-[#1F2547]">{title}</h3>
-            {description && <p className="text-sm text-[#8A90B0] mt-0.5">{description}</p>}
+        <div className="flex items-start justify-between pb-3 sm:pb-4 border-b border-[#E6E8F5] gap-3">
+          <div className="min-w-0 flex-1">
+            <h3 className="text-base sm:text-lg font-semibold text-[#1F2547] leading-snug">{title}</h3>
+            {description && <p className="text-xs sm:text-sm text-[#8A90B0] mt-0.5 leading-normal">{description}</p>}
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-[#8A90B0] hover:text-[#1F2547] hover:bg-[#EEF1FF] transition-colors"
+            className="p-1.5 rounded-lg text-[#8A90B0] hover:text-[#1F2547] hover:bg-[#EEF1FF] transition-colors cursor-pointer shrink-0"
+            aria-label="Tutup"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="mt-4 overflow-y-auto pr-1 flex-1">{children}</div>
+        <div className="mt-3 sm:mt-4 overflow-y-auto overscroll-contain pr-1 flex-1">{children}</div>
       </div>
     </div>
   );

@@ -172,8 +172,8 @@ export function DetailKunjunganClient({
   return (
     <div className="space-y-6">
       {/* Top Bar Header */}
-      <div className="bg-white rounded-[16px] border border-[#E6E8F5] p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
+      <div className="bg-white rounded-[16px] border border-[#E6E8F5] p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3 min-w-0">
           <button
             onClick={() => {
               if (typeof window !== "undefined" && window.history.length > 1) {
@@ -182,42 +182,42 @@ export function DetailKunjunganClient({
                 router.push("/dashboard");
               }
             }}
-            className="p-2 rounded-xl text-[#8A90B0] hover:text-[#1F2547] hover:bg-[#EEF1FF] transition-colors cursor-pointer"
+            className="p-2 rounded-xl text-[#8A90B0] hover:text-[#1F2547] hover:bg-[#EEF1FF] transition-colors cursor-pointer shrink-0"
             title="Kembali ke halaman sebelumnya"
             aria-label="Kembali"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div>
-            <div className="flex items-center gap-2.5">
-              <span className="font-mono font-bold text-sm text-[#4F6AE8] bg-[#EEF1FF] px-3 py-1 rounded-full">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-mono font-bold text-xs sm:text-sm text-[#4F6AE8] bg-[#EEF1FF] px-2.5 py-0.5 rounded-full">
                 {formatNomorUrut(kunjungan.nomor_urut)}
               </span>
-              <h1 className="text-xl font-bold text-[#1F2547]">
+              <h1 className="text-lg sm:text-xl font-bold text-[#1F2547]">
                 Detail Kunjungan
               </h1>
               <StatusBadge status={kunjungan.status} />
             </div>
-            <p className="text-xs text-[#8A90B0] mt-1">
+            <p className="text-[11px] sm:text-xs text-[#8A90B0] mt-1 truncate">
               ID Kunjungan: <span className="font-mono">{kunjungan.id}</span>
             </p>
           </div>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <Button
             variant="secondary"
             size="sm"
             onClick={() => setIsEditOpen(true)}
-            className="gap-1.5"
+            className="gap-1.5 flex-1 sm:flex-initial justify-center h-9 text-xs"
           >
             <Edit2 className="w-3.5 h-3.5" /> Edit Data
           </Button>
 
           {canAddMorePhotos && (
-            <Link href={`/dashboard/foto/${kunjungan.id}`}>
-              <Button size="sm" className="gap-1.5 font-semibold">
+            <Link href={`/dashboard/foto/${kunjungan.id}`} className="flex-1 sm:flex-initial">
+              <Button size="sm" className="gap-1.5 font-semibold w-full justify-center h-9 text-xs">
                 <Camera className="w-3.5 h-3.5" /> Tambah Foto ({photos.length}/5)
               </Button>
             </Link>
@@ -228,7 +228,7 @@ export function DetailKunjunganClient({
               variant="danger"
               size="sm"
               onClick={() => setIsDeleteOpen(true)}
-              className="gap-1.5"
+              className="gap-1.5 flex-1 sm:flex-initial justify-center h-9 text-xs"
             >
               <Trash2 className="w-3.5 h-3.5" /> Hapus
             </Button>

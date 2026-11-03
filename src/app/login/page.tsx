@@ -38,7 +38,7 @@ export default function LoginPage() {
   const handleDemoFill = (role: "petugas" | "admin") => {
     if (role === "petugas") {
       setEmail("petugas@banglikab.go.id");
-      setPassword("petugas123");
+      setPassword("inspektorat234!");
     } else {
       setEmail("admin@banglikab.go.id");
       setPassword("inspektorat234!");

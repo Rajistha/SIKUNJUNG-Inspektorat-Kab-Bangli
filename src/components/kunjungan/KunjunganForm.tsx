@@ -34,7 +34,7 @@ export function KunjunganForm({
   const [instansiLainnya, setInstansiLainnya] = useState("");
   const [bidangId, setBidangId] = useState("");
   const [keperluan, setKeperluan] = useState("");
-  const [jumlahLakiLaki, setJumlahLakiLaki] = useState(0);
+  const [jumlahLakiLaki, setJumlahLakiLaki] = useState(1);
   const [jumlahPerempuan, setJumlahPerempuan] = useState(0);
   const [consent, setConsent] = useState(true);
 

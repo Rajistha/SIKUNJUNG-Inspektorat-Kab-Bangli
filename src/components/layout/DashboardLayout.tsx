@@ -248,7 +248,7 @@ export function DashboardLayout({
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 min-w-0 p-3.5 sm:p-6 lg:p-8 overflow-x-hidden flex flex-col justify-between print:p-0 print:overflow-visible print:w-full print:max-w-full print:bg-white">
+      <main className="flex-1 min-w-0 p-3 sm:p-6 lg:p-8 pb-20 sm:pb-8 overflow-x-hidden flex flex-col justify-between print:p-0 print:overflow-visible print:w-full print:max-w-full print:bg-white">
         <div className="flex-1">{children}</div>
 
         {/* Global Dashboard Footer */}

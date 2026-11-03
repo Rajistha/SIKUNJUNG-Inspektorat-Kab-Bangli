@@ -323,7 +323,7 @@ export function BerkasClient({
             }
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full h-10 pl-9 pr-3 rounded-[10px] bg-[#F4F5FD] border border-transparent text-xs sm:text-sm text-[#1F2547] placeholder:text-[#8A90B0] focus:bg-white focus:border-[#4F6AE8] focus:ring-2 focus:ring-[#4F6AE8]/15 focus:outline-none transition-all"
+            className="w-full h-10 pl-9 pr-3 rounded-[10px] bg-[#F4F5FD] border border-transparent text-base sm:text-sm text-[#1F2547] placeholder:text-[#8A90B0] focus:bg-white focus:border-[#4F6AE8] focus:ring-2 focus:ring-[#4F6AE8]/15 focus:outline-none transition-all"
           />
         </div>
       </div>

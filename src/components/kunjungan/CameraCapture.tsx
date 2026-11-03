@@ -2,7 +2,7 @@
 
 import React, { useRef, useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Camera, RefreshCw, Trash2, CheckCircle2, AlertCircle, SwitchCamera } from "lucide-react";
+import { Camera, RefreshCw, Trash2, CheckCircle2, AlertCircle, SwitchCamera, Upload } from "lucide-react";
 import toast from "react-hot-toast";
 
 interface CameraCaptureProps {
@@ -19,6 +19,7 @@ export function CameraCapture({
   disabled = false,
 }: CameraCaptureProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [facingMode, setFacingMode] = useState<"user" | "environment">("environment");
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -63,7 +64,7 @@ export function CameraCapture({
         }
       } catch (fallbackErr: any) {
         setCameraError(
-          "Tidak dapat mengakses kamera. Pastikan izin kamera aktif pada browser Anda."
+          "Tidak dapat mengakses kamera. Anda tetap dapat mengunggah file foto dari galeri/penyimpanan perangkat di bawah."
         );
       }
     } finally {
@@ -117,6 +118,34 @@ export function CameraCapture({
     toast.success(`Foto ke-${updated.length} berhasil diambil!`);
   };
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Hanya file gambar (JPEG, PNG, WebP) yang diperbolehkan.");
+      return;
+    }
+
+    if (photos.length >= maxPhotos) {
+      toast.error(`Maksimal ${maxPhotos} foto per kunjungan.`);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      const updated = [...photos, dataUrl];
+      setPhotos(updated);
+      onPhotosChange(updated);
+      toast.success(`Foto ke-${updated.length} berhasil diunggah!`);
+    };
+    reader.readAsDataURL(file);
+
+    // Reset input
+    e.target.value = "";
+  };
+
   const removePhoto = (index: number) => {
     const updated = photos.filter((_, i) => i !== index);
     setPhotos(updated);
@@ -126,21 +155,41 @@ export function CameraCapture({
 
   return (
     <div className="space-y-4">
+      {/* Hidden file input for gallery upload */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={handleFileUpload}
+        className="hidden"
+      />
+
       {/* Video Viewport */}
       <div className="relative aspect-video w-full rounded-[16px] overflow-hidden bg-[#1F2547] shadow-inner flex items-center justify-center">
         {cameraError ? (
           <div className="text-center p-6 text-white max-w-sm">
             <AlertCircle className="w-12 h-12 text-[#E5484D] mx-auto mb-3" />
-            <p className="text-sm font-medium mb-3">{cameraError}</p>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={startCamera}
-              className="gap-2"
-            >
-              <RefreshCw className="w-4 h-4" /> Coba Lagi
-            </Button>
+            <p className="text-xs sm:text-sm font-medium mb-3">{cameraError}</p>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={startCamera}
+                className="gap-1.5 text-xs cursor-pointer"
+              >
+                <RefreshCw className="w-3.5 h-3.5" /> Coba Lagi
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                className="gap-1.5 text-xs font-semibold cursor-pointer"
+              >
+                <Upload className="w-3.5 h-3.5" /> Unggah Foto
+              </Button>
+            </div>
           </div>
         ) : (
           <>
@@ -158,8 +207,9 @@ export function CameraCapture({
             <button
               type="button"
               onClick={toggleCamera}
-              className="absolute top-3 right-3 p-2.5 rounded-full bg-black/40 text-white backdrop-blur-md hover:bg-black/60 transition-colors"
+              className="absolute top-3 right-3 p-2.5 rounded-full bg-black/40 text-white backdrop-blur-md hover:bg-black/60 transition-colors cursor-pointer"
               title="Ganti Kamera Depan/Belakang"
+              aria-label="Ganti Kamera"
             >
               <SwitchCamera className="w-5 h-5" />
             </button>
@@ -169,17 +219,31 @@ export function CameraCapture({
               {photos.length} dari {maxPhotos} foto
             </div>
 
-            {/* Shutter Button (floating bottom center) */}
+            {/* Shutter Button & Upload Fallback (floating bottom center) */}
             <div className="absolute bottom-4 inset-x-0 flex justify-center items-center gap-4">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={photos.length >= maxPhotos || disabled}
+                className="w-10 h-10 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center shadow backdrop-blur-md transition-all cursor-pointer"
+                title="Unggah Foto dari File / Galeri"
+                aria-label="Unggah Foto"
+              >
+                <Upload className="w-4 h-4" />
+              </button>
+
               <button
                 type="button"
                 onClick={capturePhoto}
                 disabled={photos.length >= maxPhotos || isStarting || disabled}
                 className="w-16 h-16 rounded-full border-4 border-white bg-[#4F6AE8] text-white flex items-center justify-center shadow-lg active:scale-95 hover:bg-[#3B52C4] transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 title="Ambil Foto"
+                aria-label="Ambil Foto"
               >
                 <Camera className="w-7 h-7" />
               </button>
+
+              <div className="w-10 h-10 opacity-0 pointer-events-none" />
             </div>
           </>
         )}
@@ -200,10 +264,10 @@ export function CameraCapture({
 
         {photos.length === 0 ? (
           <div className="p-4 rounded-[12px] border border-dashed border-[#E6E8F5] text-center text-xs text-[#8A90B0]">
-            Belum ada foto yang diambil. Klik tombol kamera di atas untuk memotret kehadiran tamu.
+            Belum ada foto yang diambil. Klik tombol kamera di atas atau gunakan tombol unggah untuk memotret kehadiran tamu.
           </div>
         ) : (
-          <div className="grid grid-cols-5 gap-2.5">
+          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2.5">
             {photos.map((src, idx) => (
               <div
                 key={idx}
@@ -218,7 +282,7 @@ export function CameraCapture({
                 <button
                   type="button"
                   onClick={() => removePhoto(idx)}
-                  className="absolute top-1 right-1 p-1 rounded-full bg-red-600/90 text-white opacity-90 group-hover:opacity-100 hover:bg-red-700 transition-all"
+                  className="absolute top-1 right-1 p-1 rounded-full bg-red-600/90 text-white opacity-90 group-hover:opacity-100 hover:bg-red-700 transition-all cursor-pointer"
                   title="Hapus foto ini"
                 >
                   <Trash2 className="w-3.5 h-3.5" />

@@ -46,43 +46,45 @@ export function FotoCaptureClient({ kunjungan }: FotoCaptureClientProps) {
   return (
     <div className="space-y-4">
       {/* Top Header Card */}
-      <div className="bg-white rounded-[16px] border border-[#E6E8F5] p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
+      <div className="bg-white rounded-[16px] border border-[#E6E8F5] p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3 min-w-0">
           <button
             onClick={() => router.back()}
-            className="p-2 rounded-xl text-[#8A90B0] hover:text-[#1F2547] hover:bg-[#EEF1FF] transition-colors"
+            className="p-2 rounded-xl text-[#8A90B0] hover:text-[#1F2547] hover:bg-[#EEF1FF] transition-colors shrink-0 cursor-pointer"
+            aria-label="Kembali"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-mono font-bold text-sm text-[#4F6AE8] bg-[#EEF1FF] px-2.5 py-0.5 rounded-full">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-mono font-bold text-xs sm:text-sm text-[#4F6AE8] bg-[#EEF1FF] px-2.5 py-0.5 rounded-full">
                 {formatNomorUrut(kunjungan.nomor_urut)}
               </span>
-              <h1 className="text-lg font-bold text-[#1F2547]">
-                Ambil Foto Kehadiran: {kunjungan.nama}
+              <h1 className="text-base sm:text-lg font-bold text-[#1F2547] truncate">
+                Foto Kehadiran: {kunjungan.nama}
               </h1>
             </div>
-            <div className="flex items-center gap-4 text-xs text-[#8A90B0] mt-1">
+            <div className="flex items-center gap-3 sm:gap-4 text-xs text-[#8A90B0] mt-1 flex-wrap">
               <span className="flex items-center gap-1">
                 <Building2 className="w-3.5 h-3.5" />
-                {kunjungan.instansi?.nama || kunjungan.instansi_lainnya || "-"}
+                <span className="truncate">{kunjungan.instansi?.nama || kunjungan.instansi_lainnya || "-"}</span>
               </span>
               <span className="flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5" />
-                {formatJam(kunjungan.waktu_masuk)} WITA
+                <span>{formatJam(kunjungan.waktu_masuk)} WITA</span>
               </span>
             </div>
           </div>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2">
+        <div className="grid grid-cols-2 sm:flex items-center gap-2 w-full sm:w-auto">
           <Button
             variant="outline"
             size="sm"
             onClick={() => router.back()}
             disabled={isSaving}
+            className="w-full sm:w-auto justify-center h-9 text-xs cursor-pointer"
           >
             Batal
           </Button>
@@ -91,7 +93,7 @@ export function FotoCaptureClient({ kunjungan }: FotoCaptureClientProps) {
             onClick={handleSaveAll}
             isLoading={isSaving}
             disabled={photos.length === 0}
-            className="gap-1.5 shadow-sm font-semibold"
+            className="w-full sm:w-auto gap-1.5 shadow-sm font-semibold justify-center h-9 text-xs cursor-pointer"
           >
             <Save className="w-4 h-4" /> Simpan Kehadiran ({photos.length})
           </Button>

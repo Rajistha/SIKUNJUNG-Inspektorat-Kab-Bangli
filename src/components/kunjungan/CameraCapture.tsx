@@ -4,6 +4,7 @@ import React, { useRef, useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Camera, RefreshCw, Trash2, CheckCircle2, AlertCircle, SwitchCamera, Upload } from "lucide-react";
 import toast from "react-hot-toast";
+import { compressImageToDataUrl } from "@/lib/utils";
 
 interface CameraCaptureProps {
   onPhotosChange: (photos: string[]) => void;
@@ -20,49 +21,48 @@ export function CameraCapture({
 }: CameraCaptureProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [stream, setStream] = useState<MediaStream | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const [facingMode, setFacingMode] = useState<"user" | "environment">("environment");
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [photos, setPhotos] = useState<string[]>(initialPhotos);
   const [isStarting, setIsStarting] = useState(false);
 
+  const stopStream = useCallback(() => {
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+  }, []);
+
+  const attachStream = useCallback((mediaStream: MediaStream) => {
+    streamRef.current = mediaStream;
+    if (videoRef.current) {
+      videoRef.current.srcObject = mediaStream;
+    }
+  }, []);
+
   const startCamera = useCallback(async () => {
     setIsStarting(true);
     setCameraError(null);
 
-    // Stop existing stream
-    if (stream) {
-      stream.getTracks().forEach((track) => track.stop());
-    }
+    // Matikan stream sebelumnya (ref selalu berisi stream terbaru, tidak basi)
+    stopStream();
 
     try {
-      const constraints: MediaStreamConstraints = {
-        video: {
-          facingMode: { ideal: facingMode },
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
-        audio: false,
-      };
-
-      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
-      setStream(mediaStream);
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-      }
-    } catch (err: any) {
-      console.warn("Camera access fallback or denied:", err);
-      // Fallback without facingMode if environment not supported
-      try {
-        const fallbackStream = await navigator.mediaDevices.getUserMedia({
-          video: true,
+      attachStream(
+        await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: facingMode },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
           audio: false,
-        });
-        setStream(fallbackStream);
-        if (videoRef.current) {
-          videoRef.current.srcObject = fallbackStream;
-        }
-      } catch (fallbackErr: any) {
+        })
+      );
+    } catch (err) {
+      console.warn("Camera access fallback or denied:", err);
+      // Fallback tanpa facingMode jika kamera yang diminta tidak didukung
+      try {
+        attachStream(await navigator.mediaDevices.getUserMedia({ video: true, audio: false }));
+      } catch {
         setCameraError(
           "Tidak dapat mengakses kamera. Anda tetap dapat mengunggah file foto dari galeri/penyimpanan perangkat di bawah."
         );
@@ -70,16 +70,14 @@ export function CameraCapture({
     } finally {
       setIsStarting(false);
     }
-  }, [facingMode]);
+  }, [facingMode, stopStream, attachStream]);
 
   useEffect(() => {
+    // Menyalakan perangkat kamera (sistem eksternal) dan mematikannya saat cleanup.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     startCamera();
-    return () => {
-      if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
-      }
-    };
-  }, [startCamera]);
+    return stopStream; // kamera dimatikan saat unmount / ganti kamera
+  }, [startCamera, stopStream]);
 
   const toggleCamera = () => {
     setFacingMode((prev) => (prev === "user" ? "environment" : "user"));
@@ -118,8 +116,9 @@ export function CameraCapture({
     toast.success(`Foto ke-${updated.length} berhasil diambil!`);
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = ""; // reset agar file yang sama bisa dipilih lagi
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
@@ -132,18 +131,16 @@ export function CameraCapture({
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
+    try {
+      // Foto galeri bisa berukuran beberapa MB: kompres dulu agar muat dalam batas upload.
+      const dataUrl = await compressImageToDataUrl(file);
       const updated = [...photos, dataUrl];
       setPhotos(updated);
       onPhotosChange(updated);
       toast.success(`Foto ke-${updated.length} berhasil diunggah!`);
-    };
-    reader.readAsDataURL(file);
-
-    // Reset input
-    e.target.value = "";
+    } catch {
+      toast.error("Gagal memproses gambar. Gunakan format JPEG, PNG, atau WebP.");
+    }
   };
 
   const removePhoto = (index: number) => {

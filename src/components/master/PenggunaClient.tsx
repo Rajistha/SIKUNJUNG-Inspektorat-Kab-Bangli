@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Dialog } from "@/components/ui/dialog";
-import { Plus, UserCheck, Shield, CheckCircle, XCircle, Edit2, ArrowRight } from "lucide-react";
+import { Plus, Shield, CheckCircle, XCircle, Edit2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 
@@ -69,8 +69,8 @@ export function PenggunaClient({ initialUsers }: PenggunaClientProps) {
       toast.success("Akun baru berhasil dibuat!");
       setIsAddOpen(false);
       router.refresh();
-    } catch (err: any) {
-      toast.error(err.message || "Gagal membuat akun.");
+    } catch (err) {
+      toast.error((err instanceof Error ? err.message : "") || "Gagal membuat akun.");
     } finally {
       setIsAdding(false);
     }
@@ -113,8 +113,8 @@ export function PenggunaClient({ initialUsers }: PenggunaClientProps) {
       );
       setIsEditOpen(false);
       router.refresh();
-    } catch (err: any) {
-      toast.error(err.message || "Gagal menyimpan perubahan.");
+    } catch (err) {
+      toast.error((err instanceof Error ? err.message : "") || "Gagal menyimpan perubahan.");
     } finally {
       setIsEditing(false);
     }
@@ -126,8 +126,8 @@ export function PenggunaClient({ initialUsers }: PenggunaClientProps) {
       if (!res.success) throw new Error(res.error);
       toast.success(`Akun ${!user.is_active ? "diaktifkan" : "dinonaktifkan"}!`);
       setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, is_active: !user.is_active } : u)));
-    } catch (err: any) {
-      toast.error(err.message || "Gagal mengubah status akun.");
+    } catch (err) {
+      toast.error((err instanceof Error ? err.message : "") || "Gagal mengubah status akun.");
     }
   };
 

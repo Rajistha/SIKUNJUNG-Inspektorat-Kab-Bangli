@@ -20,10 +20,7 @@ import {
   Building2,
   Layers,
   Phone,
-  Clock,
-  UserCheck,
   ShieldCheck,
-  ExternalLink,
   Users,
   ZoomIn,
   Mars,
@@ -114,8 +111,8 @@ export function DetailKunjunganClient({
       toast.success("Foto berhasil dihapus dari sistem dan penyimpanan.");
       setFotoToDelete(null);
       router.refresh();
-    } catch (err: any) {
-      toast.error(err.message || "Gagal menghapus foto.");
+    } catch (err) {
+      toast.error((err instanceof Error ? err.message : "") || "Gagal menghapus foto.");
     } finally {
       setIsDeletingFoto(false);
     }
@@ -136,7 +133,7 @@ export function DetailKunjunganClient({
     try {
       const res = await editKunjungan(kunjungan.id, {
         nama: editNama.trim(),
-        jenis_kelamin: editJenisKelamin as any,
+        jenis_kelamin: editJenisKelamin,
         no_telepon: editTelepon.trim() || undefined,
         keperluan: editKeperluan.trim(),
         jumlah_tamu: parseInt(editJumlah) || 1,
@@ -146,8 +143,8 @@ export function DetailKunjunganClient({
       toast.success("Data kunjungan berhasil diperbarui!");
       setIsEditOpen(false);
       router.refresh();
-    } catch (err: any) {
-      toast.error(err.message || "Gagal menyimpan perubahan.");
+    } catch (err) {
+      toast.error((err instanceof Error ? err.message : "") || "Gagal menyimpan perubahan.");
     } finally {
       setIsSavingEdit(false);
     }
@@ -160,8 +157,8 @@ export function DetailKunjunganClient({
       if (!res.success) throw new Error(res.error || "Gagal menghapus.");
       toast.success("Kunjungan berhasil dihapus.");
       router.push("/dashboard");
-    } catch (err: any) {
-      toast.error(err.message || "Gagal menghapus kunjungan.");
+    } catch (err) {
+      toast.error((err instanceof Error ? err.message : "") || "Gagal menghapus kunjungan.");
       setIsDeleting(false);
     }
   };

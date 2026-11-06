@@ -8,19 +8,16 @@ import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
 import {
-  formatNomorUrut,
   formatTanggal,
   formatJam,
-  maskTelepon,
-} from "@/lib/utils";
+  } from "@/lib/utils";
 import {
   FileSpreadsheet,
   FileText,
   Search,
   RefreshCw,
   Eye,
-  ArrowRight,
-} from "lucide-react";
+  } from "lucide-react";
 import toast from "react-hot-toast";
 import Link from "next/link";
 import { exportKunjunganToExcel, exportKunjunganToPdf } from "@/lib/export-utils";
@@ -62,14 +59,16 @@ export function RekapClient({ instansiList }: RekapClientProps) {
       } else {
         toast.error(res.error || "Gagal memuat data rekap.");
       }
-    } catch (err: any) {
-      toast.error(err.message || "Terjadi kesalahan.");
+    } catch (err) {
+      toast.error((err instanceof Error ? err.message : "") || "Terjadi kesalahan.");
     } finally {
       setIsLoading(false);
     }
   }, [dariTanggal, sampaiTanggal, selectedInstansi]);
 
   useEffect(() => {
+    // Memuat data saat filter berubah (sinkronisasi dengan server).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchRekap();
   }, [fetchRekap]);
 
@@ -84,13 +83,13 @@ export function RekapClient({ instansiList }: RekapClientProps) {
     );
   });
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     if (filtered.length === 0) {
       toast.error("Tidak ada data untuk diekspor.");
       return;
     }
     try {
-      exportKunjunganToExcel(filtered, {
+      await exportKunjunganToExcel(filtered, {
         title: "LAPORAN REKAPITULASI BUKU TAMU DIGITAL (SIKUNJUNG)",
         subtitle: `${formatTanggal(dariTanggal)} s/d ${formatTanggal(sampaiTanggal)}`,
         filenamePrefix: `Rekap_SIKUNJUNG_${dariTanggal}_sd_${sampaiTanggal}`,
@@ -101,14 +100,14 @@ export function RekapClient({ instansiList }: RekapClientProps) {
     }
   };
 
-  const handleExportPdf = () => {
+  const handleExportPdf = async () => {
     if (filtered.length === 0) {
       toast.error("Tidak ada data untuk diekspor.");
       return;
     }
     try {
       toast.loading("Menyiapkan dokumen PDF resmi...", { id: "pdf-gen" });
-      exportKunjunganToPdf(filtered, {
+      await exportKunjunganToPdf(filtered, {
         title: "LAPORAN REKAPITULASI BUKU TAMU DIGITAL (SIKUNJUNG)",
         subtitle: `${formatTanggal(dariTanggal)} s/d ${formatTanggal(sampaiTanggal)}`,
         filenamePrefix: `Laporan_SIKUNJUNG_${dariTanggal}_sd_${sampaiTanggal}`,

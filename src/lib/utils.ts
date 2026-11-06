@@ -30,20 +30,36 @@ export function formatTanggal(dateStr: string): string {
   }
 }
 
+const WITA = "Asia/Makassar";
+
+// Format jam/tanggal selalu dalam WITA agar hasil render server (UTC) dan browser konsisten.
+const jamFormatter = new Intl.DateTimeFormat("en-GB", {
+  timeZone: WITA,
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+
+const tanggalJamFormatter = new Intl.DateTimeFormat("id-ID", {
+  timeZone: WITA,
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+});
+
+function toDate(dateStr: string): Date | null {
+  const d = new Date(dateStr);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
 export function formatJam(dateStr: string): string {
-  try {
-    return format(parseISO(dateStr), "HH:mm");
-  } catch {
-    return dateStr;
-  }
+  const d = toDate(dateStr);
+  return d ? jamFormatter.format(d) : dateStr;
 }
 
 export function formatTanggalJam(dateStr: string): string {
-  try {
-    return format(parseISO(dateStr), "d MMM yyyy, HH:mm", { locale: idLocale });
-  } catch {
-    return dateStr;
-  }
+  const d = toDate(dateStr);
+  return d ? `${tanggalJamFormatter.format(d)}, ${jamFormatter.format(d)}` : dateStr;
 }
 
 export function formatNomorUrut(nomor: number): string {
@@ -138,5 +154,16 @@ export function compressImage(
     };
     img.onerror = reject;
     img.src = url;
+  });
+}
+
+/** Kompres foto (maks. 1200px, ~targetKB) lalu kembalikan sebagai data URL JPEG. */
+export async function compressImageToDataUrl(file: File, targetKB = 400): Promise<string> {
+  const blob = await compressImage(file, targetKB);
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error ?? new Error("Gagal membaca gambar"));
+    reader.readAsDataURL(blob);
   });
 }

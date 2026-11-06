@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { isSupabaseConfigured } from "./client";
+import { isSupabaseConfigured, isDemoAllowed } from "./client";
 
 export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
@@ -8,7 +8,7 @@ export async function updateSession(request: NextRequest) {
   // If Supabase is not configured, use simple demo cookie session
   if (!isSupabaseConfigured()) {
     const sessionCookie = request.cookies.get("sikunjung_session");
-    const isAuthenticated = Boolean(sessionCookie?.value);
+    const isAuthenticated = isDemoAllowed() && Boolean(sessionCookie?.value);
 
     // Protect dashboard routes
     if (pathname.startsWith("/dashboard") && !isAuthenticated) {

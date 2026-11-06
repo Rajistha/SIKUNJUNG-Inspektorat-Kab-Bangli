@@ -73,6 +73,7 @@ export function DatePicker({
   // Sync view when value changes from outside
   useEffect(() => {
     if (parsedDate) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setViewYear(parsedDate.getFullYear());
       setViewMonth(parsedDate.getMonth());
     }

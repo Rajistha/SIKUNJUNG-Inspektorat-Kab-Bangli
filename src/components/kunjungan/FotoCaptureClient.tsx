@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Kunjungan } from "@/lib/types";
 import { CameraCapture } from "@/components/kunjungan/CameraCapture";
 import { Button } from "@/components/ui/button";
 import { simpanFoto } from "@/lib/actions/foto";
 import { formatNomorUrut, formatJam } from "@/lib/utils";
-import { ArrowLeft, Save, Building2, User, Clock, CheckCircle } from "lucide-react";
+import { ArrowLeft, Save, Building2, Clock } from "lucide-react";
 import toast from "react-hot-toast";
 
 interface FotoCaptureClientProps {
@@ -18,6 +18,8 @@ export function FotoCaptureClient({ kunjungan }: FotoCaptureClientProps) {
   const router = useRouter();
   const [photos, setPhotos] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  // Foto yang sudah tersimpan di server; mencegah foto ganda saat mengulang setelah gagal sebagian.
+  const savedPhotos = useRef(new Set<string>());
 
   const handleSaveAll = async () => {
     if (photos.length === 0) {
@@ -27,18 +29,20 @@ export function FotoCaptureClient({ kunjungan }: FotoCaptureClientProps) {
 
     setIsSaving(true);
     try {
-      // Save each photo
+      // Simpan berurutan; lewati foto yang sudah tersimpan pada percobaan sebelumnya.
       for (let i = 0; i < photos.length; i++) {
-        const res = await simpanFoto(kunjungan.id, photos[i], i + 1);
+        if (savedPhotos.current.has(photos[i])) continue;
+        const res = await simpanFoto(kunjungan.id, photos[i]);
         if (!res.success) {
           throw new Error(res.error || `Gagal menyimpan foto ke-${i + 1}`);
         }
+        savedPhotos.current.add(photos[i]);
       }
 
       toast.success("Foto kehadiran berhasil disimpan! Status kunjungan kini Tercatat.");
       router.push(`/dashboard/detail/${kunjungan.id}`);
-    } catch (err: any) {
-      toast.error(err.message || "Gagal menyimpan foto.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal menyimpan foto.");
       setIsSaving(false);
     }
   };

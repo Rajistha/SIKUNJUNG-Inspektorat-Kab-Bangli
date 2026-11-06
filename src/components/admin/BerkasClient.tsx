@@ -13,7 +13,6 @@ import {
   RefreshCw,
   FolderArchive,
   CheckCircle2,
-  X,
   FileImage,
   Folder,
   FolderOpen,
@@ -22,7 +21,6 @@ import {
   Building2,
   ExternalLink,
   Cloud,
-  FileText,
   User,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -134,8 +132,8 @@ export function BerkasClient({
       toast.success("Berkas fisik berhasil dihapus dari cloud storage.");
       setFileToDelete(null);
       router.refresh();
-    } catch (err: any) {
-      toast.error(err.message || "Gagal menghapus berkas.");
+    } catch (err) {
+      toast.error((err instanceof Error ? err.message : "") || "Gagal menghapus berkas.");
     } finally {
       setIsDeleting(false);
     }
@@ -151,8 +149,8 @@ export function BerkasClient({
       setFolderToDelete(null);
       setSelectedFolderId(null);
       router.refresh();
-    } catch (err: any) {
-      toast.error(err.message || "Gagal menghapus folder.");
+    } catch (err) {
+      toast.error((err instanceof Error ? err.message : "") || "Gagal menghapus folder.");
     } finally {
       setIsDeleting(false);
     }

@@ -1,8 +1,11 @@
-import * as XLSX from "xlsx";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
+import type { jsPDF as JsPdfDoc } from "jspdf";
 import { Kunjungan } from "./types";
-import { formatNomorUrut, formatTanggal, formatJam, formatTanggalJam } from "./utils";
+import { formatNomorUrut, formatTanggal, formatJam, formatTanggalJam, getTodayWITA } from "./utils";
+
+// Pustaka ekspor besar (xlsx, jspdf) dimuat hanya saat tombol ekspor ditekan,
+// sehingga tidak membengkakkan bundel awal dashboard.
+
+const TOTAL_PAGES_TOKEN = "{total_pages}";
 
 interface ExportOptions {
   title?: string;
@@ -13,10 +16,11 @@ interface ExportOptions {
 /**
  * Ekspor data kunjungan ke Excel (.xlsx) dengan tata letak resmi dan rapi.
  */
-export function exportKunjunganToExcel(
+export async function exportKunjunganToExcel(
   kunjunganList: Kunjungan[],
   options: ExportOptions = {}
-) {
+): Promise<void> {
+  const XLSX = await import("xlsx");
   const {
     title = "LAPORAN REKAPITULASI BUKU TAMU DIGITAL (SIKUNJUNG)",
     subtitle = "Inspektorat Daerah Kabupaten Bangli",
@@ -26,7 +30,7 @@ export function exportKunjunganToExcel(
   const nowStr = formatTanggalJam(new Date().toISOString());
 
   // 1. Baris Judul & Kop Resmi Laporan
-  const rows: any[][] = [
+  const rows: (string | number)[][] = [
     ["PEMERINTAH KABUPATEN BANGLI"],
     ["INSPEKTORAT DAERAH KABUPATEN BANGLI"],
     [title],
@@ -117,17 +121,20 @@ export function exportKunjunganToExcel(
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "Rekap Kunjungan");
 
-  const today = new Date().toISOString().split("T")[0];
-  XLSX.writeFile(workbook, `${filenamePrefix}_${today}.xlsx`);
+  XLSX.writeFile(workbook, `${filenamePrefix}_${getTodayWITA()}.xlsx`);
 }
 
 /**
  * Ekspor data kunjungan ke PDF (.pdf) resmi, elegan, profesional, dan proporsional.
  */
-export function exportKunjunganToPdf(
+export async function exportKunjunganToPdf(
   kunjunganList: Kunjungan[],
   options: ExportOptions = {}
-) {
+): Promise<void> {
+  const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+    import("jspdf"),
+    import("jspdf-autotable"),
+  ]);
   const {
     title = "LAPORAN REKAPITULASI BUKU TAMU DIGITAL (SIKUNJUNG)",
     subtitle = "Inspektorat Daerah Kabupaten Bangli",
@@ -143,7 +150,8 @@ export function exportKunjunganToPdf(
 
   const now = new Date();
   const nowFormatted = formatTanggalJam(now.toISOString());
-  const todayFormatted = formatTanggal(now.toISOString().split("T")[0]);
+  const todayStr = getTodayWITA();
+  const todayFormatted = formatTanggal(todayStr);
 
   // Statistik Ringkas
   const totalKunjungan = kunjunganList.length;
@@ -255,10 +263,9 @@ export function exportKunjunganToPdf(
       8: { cellWidth: 20, halign: "center" }, // Status
       9: { cellWidth: 10, halign: "center" }, // Foto
     },
-    didDrawPage: (data) => {
-      // Footer pada setiap halaman
-      const pageCount = (doc as any).internal.getNumberOfPages();
-      const currentPage = (doc as any).internal.getCurrentPageInfo().pageNumber;
+    didDrawPage: () => {
+      // Footer pada setiap halaman; total halaman diisi setelah tabel selesai (putTotalPages)
+      const currentPage = doc.getCurrentPageInfo().pageNumber;
 
       doc.setFont("helvetica", "normal");
       doc.setFontSize(7);
@@ -276,7 +283,7 @@ export function exportKunjunganToPdf(
       );
 
       doc.text(
-        `Halaman ${currentPage} dari ${pageCount}`,
+        `Halaman ${currentPage} dari ${TOTAL_PAGES_TOKEN}`,
         283,
         202,
         { align: "right" }
@@ -285,7 +292,7 @@ export function exportKunjunganToPdf(
   });
 
   // ================= 4. AREA TANDA TANGAN DI HALAMAN TERAKHIR =================
-  const lastTableY = (doc as any).lastAutoTable?.finalY || 140;
+  const lastTableY = (doc as JsPdfDoc & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY || 140;
   let signY = lastTableY + 8;
 
   // Jika posisi tanda tangan melebihi batas bawah halaman, buat halaman baru
@@ -307,7 +314,7 @@ export function exportKunjunganToPdf(
     align: "center",
   });
 
-  const todayStr = now.toISOString().split("T")[0];
+  doc.putTotalPages(TOTAL_PAGES_TOKEN);
   doc.save(`${filenamePrefix}_${todayStr}.pdf`);
 }
 

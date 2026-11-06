@@ -15,20 +15,16 @@ import {
   Search,
   Camera,
   Eye,
-  Filter,
   FileSpreadsheet,
   FileText,
-  ArrowRight,
   Users,
   Clock,
   CheckCircle,
   Building2,
-  Calendar,
   Mars,
   Venus,
   MessageCircle,
 } from "lucide-react";
-import * as XLSX from "xlsx";
 import toast from "react-hot-toast";
 import { exportKunjunganToExcel, exportKunjunganToPdf } from "@/lib/export-utils";
 
@@ -80,13 +76,13 @@ export function TamuTableClient({
   }, [initialKunjungan, search, selectedInstansi, selectedStatus]);
 
   // Export functions using official export utils
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     if (filtered.length === 0) {
       toast.error("Tidak ada data untuk diekspor.");
       return;
     }
     try {
-      exportKunjunganToExcel(filtered, {
+      await exportKunjunganToExcel(filtered, {
         title: "DAFTAR TAMU HARIAN (SIKUNJUNG)",
         subtitle: `Tamu Hari Ini (${new Date().toLocaleDateString("id-ID", { dateStyle: "long" })})`,
         filenamePrefix: "Tamu_Hari_Ini_SIKUNJUNG",
@@ -97,14 +93,14 @@ export function TamuTableClient({
     }
   };
 
-  const handleExportPdf = () => {
+  const handleExportPdf = async () => {
     if (filtered.length === 0) {
       toast.error("Tidak ada data untuk diekspor.");
       return;
     }
     try {
       toast.loading("Menyiapkan dokumen PDF...", { id: "pdf-today" });
-      exportKunjunganToPdf(filtered, {
+      await exportKunjunganToPdf(filtered, {
         title: "DAFTAR TAMU HARIAN (SIKUNJUNG)",
         subtitle: `Tamu Hari Ini (${new Date().toLocaleDateString("id-ID", { dateStyle: "long" })})`,
         filenamePrefix: "Tamu_Hari_Ini_SIKUNJUNG",

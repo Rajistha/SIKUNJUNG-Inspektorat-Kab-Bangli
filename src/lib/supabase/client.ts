@@ -10,9 +10,19 @@ export function isSupabaseConfigured(): boolean {
   return true;
 }
 
+/**
+ * Mode demo (cookie sesi tanpa tanda tangan + data in-memory) hanya boleh aktif
+ * saat development, atau jika ALLOW_DEMO_MODE=true diset secara eksplisit.
+ * Di produksi dengan env Supabase yang salah/kosong, aplikasi gagal tertutup
+ * (tidak ada yang bisa login) alih-alih membuka mode demo yang mudah dipalsukan.
+ */
+export function isDemoAllowed(): boolean {
+  return process.env.NODE_ENV !== "production" || process.env.ALLOW_DEMO_MODE === "true";
+}
+
 export function createClient() {
   if (!isSupabaseConfigured()) {
-    return null as any;
+    return null;
   }
   return createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

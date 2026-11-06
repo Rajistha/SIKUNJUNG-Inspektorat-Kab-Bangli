@@ -1,7 +1,8 @@
 export type Role = "admin" | "petugas";
 export type Status = "menunggu_foto" | "tercatat" | "tidak_diverifikasi";
 export type Sumber = "qr" | "petugas";
-export type JenisKelamin = "Laki-laki" | "Perempuan";
+// Ringkasan komposisi tamu untuk tampilan, mis. "Laki-laki", "Perempuan" atau "2 Laki-laki, 1 Perempuan".
+export type JenisKelamin = string;
 
 export interface User {
   id: string;
@@ -37,6 +38,8 @@ export interface Kunjungan {
   bidang_id?: string;
   keperluan: string;
   jumlah_tamu: number;
+  jumlah_laki?: number;
+  jumlah_perempuan?: number;
   sumber: Sumber;
   status: Status;
   consent: boolean;
@@ -53,7 +56,7 @@ export interface FotoKehadiran {
   kunjungan_id: string;
   storage_path: string;
   urutan: number;
-  diambil_oleh: string;
+  diambil_oleh?: string | null;
   diambil_pada: string;
   url?: string;
 }
@@ -74,6 +77,8 @@ export interface TambahKunjunganInput {
   bidang_id?: string;
   keperluan: string;
   jumlah_tamu?: number;
+  jumlah_laki?: number;
+  jumlah_perempuan?: number;
   consent: boolean;
   sumber: "qr" | "petugas";
 }

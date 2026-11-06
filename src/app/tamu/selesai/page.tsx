@@ -2,7 +2,7 @@
 
 import React, { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { CheckCircle2, Camera, User, Clock, ArrowRight } from "lucide-react";
+import { CheckCircle2, Camera, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatNomorUrut, formatJam } from "@/lib/utils";
 

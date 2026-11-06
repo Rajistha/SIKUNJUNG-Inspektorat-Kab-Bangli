@@ -6,7 +6,7 @@ import { tambahBidang, updateBidang } from "@/lib/actions/master";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/dialog";
-import { Plus, Edit2, Layers, CheckCircle, XCircle, ArrowRight } from "lucide-react";
+import { Plus, Edit2, CheckCircle, XCircle } from "lucide-react";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 
@@ -70,8 +70,8 @@ export function BidangClient({ initialList }: BidangClientProps) {
         router.refresh();
       }
       setIsOpen(false);
-    } catch (err: any) {
-      toast.error(err.message || "Gagal menyimpan.");
+    } catch (err) {
+      toast.error((err instanceof Error ? err.message : "") || "Gagal menyimpan.");
     } finally {
       setIsSubmitting(false);
     }
@@ -87,8 +87,8 @@ export function BidangClient({ initialList }: BidangClientProps) {
           b.id === item.id ? { ...b, is_active: !item.is_active } : b
         )
       );
-    } catch (err: any) {
-      toast.error(err.message || "Gagal mengubah status.");
+    } catch (err) {
+      toast.error((err instanceof Error ? err.message : "") || "Gagal mengubah status.");
     }
   };
 

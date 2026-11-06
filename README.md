@@ -70,3 +70,13 @@ Aplikasi ini dikembangkan untuk:
 Jl. Brigjen Ngurah Rai No. 30, Bangli, Bali 80613  
 
 *Mewujudkan Pelayanan Publik yang Transparan, Akuntabel, dan Berintegritas.*
+
+---
+
+## Setup Database (Supabase)
+
+Jalankan berurutan di SQL Editor:
+
+1. `supabase/schema.sql`: tabel, trigger, bucket storage, dan data awal instansi/bidang.
+2. `supabase/migration_hardening.sql`: RPC pencatatan kunjungan (nomor urut atomik), kolom jumlah laki-laki/perempuan, dan RLS berbasis role. **Wajib**, form tamu publik memanggil fungsi `tambah_kunjungan`.
+3. Buat akun admin pertama sesuai petunjuk di akhir `schema.sql` (kredensial tidak lagi ditulis di repositori).

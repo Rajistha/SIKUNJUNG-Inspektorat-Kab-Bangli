@@ -29,26 +29,30 @@ export function QrDisplayClient() {
         ? window.location.origin
         : process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     const targetUrl = `${origin}/tamu`;
-    setTamuUrl(targetUrl);
+    let cancelled = false;
 
-    // Generate ultra-high resolution QR code with deep navy color
-    QRCode.toDataURL(
-      targetUrl,
-      {
-        width: 1000,
-        margin: 1.5,
-        color: {
-          dark: "#1F2547",
-          light: "#FFFFFF",
-        },
-        errorCorrectionLevel: "H",
+    // QR resolusi tinggi dengan warna navy
+    QRCode.toDataURL(targetUrl, {
+      width: 1000,
+      margin: 1.5,
+      color: {
+        dark: "#1F2547",
+        light: "#FFFFFF",
       },
-      (err, url) => {
-        if (!err && url) {
-          setQrDataUrl(url);
-        }
-      }
-    );
+      errorCorrectionLevel: "H",
+    })
+      .then((url) => {
+        if (cancelled) return;
+        setTamuUrl(targetUrl);
+        setQrDataUrl(url);
+      })
+      .catch(() => {
+        if (!cancelled) setTamuUrl(targetUrl);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleCopy = () => {
@@ -94,7 +98,7 @@ export function QrDisplayClient() {
       a.click();
       document.body.removeChild(a);
       toast.success("Gambar standee berhasil diunduh utuh!");
-    } catch (err: any) {
+    } catch (err) {
       console.error("Gagal mengunduh gambar standee:", err);
       toast.error("Gagal mengunduh standee. Silakan coba lagi.");
     } finally {

@@ -1,20 +1,19 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { isSupabaseConfigured } from "@/lib/supabase/client";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { isSupabaseConfigured, isDemoAllowed } from "@/lib/supabase/client";
 import { mockStore } from "@/lib/store";
+import { getSessionUser } from "@/lib/session";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { User } from "@/lib/types";
 
 export async function login(formData: FormData | { email: string; password: string }) {
-  const email = typeof formData === "object" && "get" in formData
-    ? (formData.get("email") as string)
-    : formData.email;
-  const password = typeof formData === "object" && "get" in formData
-    ? (formData.get("password") as string)
-    : formData.password;
+  const email = (
+    formData instanceof FormData ? (formData.get("email") as string) : formData.email
+  )?.trim();
+  const password =
+    formData instanceof FormData ? (formData.get("password") as string) : formData.password;
 
   if (!email || !password) {
     return { success: false, error: "Email dan password wajib diisi." };
@@ -23,11 +22,26 @@ export async function login(formData: FormData | { email: string; password: stri
   if (isSupabaseConfigured()) {
     const supabase = await createClient();
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return { success: false, error: error.message };
+    if (error) return { success: false, error: "Email atau password salah." };
+
+    // Akun yang dinonaktifkan atau tanpa profil tidak boleh masuk.
+    const profile = await getSessionUser();
+    if (!profile) {
+      await supabase.auth.signOut();
+      return {
+        success: false,
+        error: "Akun ini tidak aktif atau belum terdaftar. Hubungi admin.",
+      };
+    }
+
     redirect("/dashboard");
   }
 
-  // Demo fallback
+  if (!isDemoAllowed()) {
+    return { success: false, error: "Layanan belum dikonfigurasi. Hubungi admin." };
+  }
+
+  // Demo fallback (hanya development / ALLOW_DEMO_MODE=true)
   const normalizedEmail = email.toLowerCase().replace(/@bangli\.go\.id$/, "@banglikab.go.id");
   const user = mockStore.getUsers().find((u) => {
     const userNorm = u.email.toLowerCase().replace(/@bangli\.go\.id$/, "@banglikab.go.id");
@@ -65,56 +79,5 @@ export async function logout() {
 }
 
 export async function getCurrentUser(): Promise<User | null> {
-  if (isSupabaseConfigured()) {
-    try {
-      const supabase = await createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return null;
-
-      // 1. Ambil profil user: utamakan admin client untuk menghindari bug rekursi RLS di Supabase
-      const adminSupabase = createAdminClient();
-      const client = adminSupabase || supabase;
-
-      const { data } = await client
-        .from("users")
-        .select("*")
-        .or(`id.eq.${user.id},email.eq.${user.email}`)
-        .maybeSingle();
-
-      if (data) {
-        return data as User;
-      }
-
-      // 2. Fallback darurat jika baris belum sempat terambil
-      const isAdmin = user.email?.toLowerCase().includes("admin") ?? false;
-      return {
-        id: user.id,
-        nama:
-          (user.user_metadata?.nama as string) ||
-          (isAdmin ? "Admin Inspektorat" : "Petugas"),
-        email: user.email!,
-        role: isAdmin ? "admin" : "petugas",
-        is_active: true,
-        created_at: user.created_at,
-      };
-    } catch (err) {
-      console.error("Error in getCurrentUser:", err);
-      return null;
-    }
-  }
-
-  // Demo fallback
-  const cookieStore = await cookies();
-  const session = cookieStore.get("sikunjung_session");
-  if (!session?.value) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(session.value) as User;
-  } catch {
-    return null;
-  }
+  return getSessionUser();
 }

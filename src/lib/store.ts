@@ -1,12 +1,12 @@
-import { Kunjungan, Instansi, Bidang, User, FotoKehadiran, Status, TambahKunjunganInput, JenisKelamin } from "./types";
+import { Kunjungan, Instansi, Bidang, User, FotoKehadiran, JenisKelamin } from "./types";
 import { initialInstansi, initialBidang, initialUsers, initialKunjungan } from "./mock-data";
 import { getTodayWITA } from "./utils";
 
 // In-memory store for fallback/demo mode
-let globalKunjungan: Kunjungan[] = [...initialKunjungan];
-let globalInstansi: Instansi[] = [...initialInstansi];
-let globalBidang: Bidang[] = [...initialBidang];
-let globalUsers: User[] = [...initialUsers];
+const globalKunjungan: Kunjungan[] = [...initialKunjungan];
+const globalInstansi: Instansi[] = [...initialInstansi];
+const globalBidang: Bidang[] = [...initialBidang];
+const globalUsers: User[] = [...initialUsers];
 
 export const mockStore = {
   getInstansi(activeOnly = true): Instansi[] {
@@ -116,11 +116,13 @@ export const mockStore = {
     bidang_id?: string;
     keperluan: string;
     jumlah_tamu?: number;
+    jumlah_laki?: number;
+    jumlah_perempuan?: number;
     consent: boolean;
     sumber: "qr" | "petugas";
     dibuat_oleh?: string;
   }): Kunjungan {
-    const today = new Date().toISOString().split("T")[0];
+    const today = getTodayWITA();
     const todays = globalKunjungan.filter((k) => k.tanggal === today);
     const nextNomor = todays.reduce((max, k) => Math.max(max, k.nomor_urut), 0) + 1;
 
@@ -143,6 +145,8 @@ export const mockStore = {
       bidang_id: input.bidang_id,
       keperluan: input.keperluan || "-",
       jumlah_tamu: input.jumlah_tamu || 1,
+      jumlah_laki: input.jumlah_laki,
+      jumlah_perempuan: input.jumlah_perempuan,
       sumber: input.sumber,
       status: "menunggu_foto",
       consent: input.consent,

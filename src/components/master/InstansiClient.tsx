@@ -6,7 +6,7 @@ import { tambahInstansi, updateInstansi } from "@/lib/actions/master";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/dialog";
-import { Plus, Edit2, Search, Building2, CheckCircle, XCircle, ArrowRight } from "lucide-react";
+import { Plus, Edit2, Search, CheckCircle, XCircle } from "lucide-react";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 
@@ -69,8 +69,8 @@ export function InstansiClient({ initialList }: InstansiClientProps) {
         router.refresh();
       }
       setIsOpen(false);
-    } catch (err: any) {
-      toast.error(err.message || "Gagal menyimpan.");
+    } catch (err) {
+      toast.error((err instanceof Error ? err.message : "") || "Gagal menyimpan.");
     } finally {
       setIsSubmitting(false);
     }
@@ -88,8 +88,8 @@ export function InstansiClient({ initialList }: InstansiClientProps) {
           i.id === item.id ? { ...i, is_active: !item.is_active } : i
         )
       );
-    } catch (err: any) {
-      toast.error(err.message || "Gagal mengubah status.");
+    } catch (err) {
+      toast.error((err instanceof Error ? err.message : "") || "Gagal mengubah status.");
     }
   };
 

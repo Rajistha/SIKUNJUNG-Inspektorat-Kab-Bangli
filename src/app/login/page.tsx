@@ -28,9 +28,10 @@ export default function LoginPage() {
         toast.error(res.error || "Gagal masuk. Periksa kembali email dan sandi.");
         setIsLoading(false);
       }
-    } catch (err: any) {
-      if (err?.message?.includes("NEXT_REDIRECT")) return;
-      toast.error(err.message || "Terjadi kesalahan sistem.");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "";
+      if (message.includes("NEXT_REDIRECT")) return;
+      toast.error(message || "Terjadi kesalahan sistem.");
       setIsLoading(false);
     }
   };
@@ -106,7 +107,8 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          {/* Quick Demo Pill Selector */}
+          {/* Quick Demo Pill Selector: hanya development, kredensial demo tidak boleh tampil di produksi */}
+          {process.env.NODE_ENV !== "production" && (
           <div className="mt-6 pt-5 border-t border-[#E6E8F5]">
             <p className="text-[11px] text-center font-medium text-[#8A90B0] mb-2.5">
               Akun Coba Cepat (Mode Demo / Pengujian):
@@ -128,6 +130,7 @@ export default function LoginPage() {
               </button>
             </div>
           </div>
+          )}
         </div>
 
         {/* Footer info */}

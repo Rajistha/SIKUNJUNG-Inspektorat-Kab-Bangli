@@ -18,7 +18,7 @@ import {
   FolderArchive,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { User, Instansi, Bidang } from "@/lib/types";
+import { User, Instansi, Bidang, Kunjungan } from "@/lib/types";
 import { logout } from "@/lib/actions/auth";
 import { Dialog } from "@/components/ui/dialog";
 import { KunjunganForm } from "@/components/kunjungan/KunjunganForm";
@@ -107,7 +107,7 @@ export function DashboardLayout({
       : []),
   ];
 
-  const handleTamuAdded = (newKunjungan: any) => {
+  const handleTamuAdded = (newKunjungan?: Kunjungan) => {
     setTambahModalOpen(false);
     if (newKunjungan?.id) {
       router.push(`/dashboard/foto/${newKunjungan.id}`);

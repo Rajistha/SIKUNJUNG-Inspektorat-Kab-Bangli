@@ -1,7 +1,9 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { isSupabaseConfigured } from "@/lib/supabase/client";
+import { isSupabaseConfigured, isDemoAllowed } from "@/lib/supabase/client";
+import { authorize } from "@/lib/session";
+import { FOTO_BUCKET, cleanStoragePath, mapInChunks } from "@/lib/storage-utils";
 import { revalidatePath } from "next/cache";
 
 export interface BerkasItem {
@@ -38,100 +40,140 @@ export interface DaftarBerkasResponse {
 }
 
 const SUPABASE_FREE_STORAGE_LIMIT_BYTES = 1024 * 1024 * 1024; // 1 GB (1,073,741,824 bytes)
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const LIST_PAGE = 1000;
+const PARALLEL = 10;
+
+interface KunjunganBerkasRow {
+  id: string;
+  nomor_urut: number;
+  nama: string;
+  instansi: { nama: string } | { nama: string }[] | null;
+  instansi_lainnya: string | null;
+  tanggal: string;
+  waktu_masuk: string;
+  keperluan: string | null;
+  status: string;
+}
+
+interface StorageEntry {
+  name: string;
+  id: string | null;
+  created_at?: string;
+  metadata?: { size?: number } | null;
+}
+
+function emptyResponse(error?: string): DaftarBerkasResponse {
+  return {
+    success: !error,
+    folders: [],
+    files: [],
+    totalSize: 0,
+    maxSizeBytes: SUPABASE_FREE_STORAGE_LIMIT_BYTES,
+    error,
+  };
+}
 
 export async function getDaftarBerkas(): Promise<DaftarBerkasResponse> {
+  const auth = await authorize("admin");
+  if (!auth.ok) return emptyResponse(auth.error);
+
   if (isSupabaseConfigured()) {
     try {
       const supabase = await createClient();
+      const bucket = supabase.storage.from(FOTO_BUCKET);
 
-      // 1. List root items in 'foto-kehadiran' bucket
-      const { data: rootItems, error: listError } = await supabase.storage
-        .from("foto-kehadiran")
-        .list("", { limit: 200, sortBy: { column: "created_at", order: "desc" } });
-
-      if (listError) {
-        return {
-          success: false,
-          folders: [],
-          files: [],
-          totalSize: 0,
-          maxSizeBytes: SUPABASE_FREE_STORAGE_LIMIT_BYTES,
-          error: listError.message,
-        };
+      // 1. Daftar seluruh isi root bucket (berhalaman, tidak terpotong di 200 item)
+      const rootItems: StorageEntry[] = [];
+      for (let offset = 0; ; offset += LIST_PAGE) {
+        const { data, error } = await bucket.list("", {
+          limit: LIST_PAGE,
+          offset,
+          sortBy: { column: "created_at", order: "desc" },
+        });
+        if (error) return emptyResponse(error.message);
+        rootItems.push(...((data ?? []) as StorageEntry[]));
+        if (!data || data.length < LIST_PAGE) break;
       }
+
+      const folderNames = rootItems.filter((i) => !i.id && i.name).map((i) => i.name);
+      const rootFiles = rootItems.filter((i) => i.id && i.name);
+
+      // 2. Isi tiap folder diambil paralel (bukan satu per satu)
+      const folderContents = await mapInChunks(folderNames, PARALLEL, async (folder) => {
+        const { data } = await bucket.list(folder, {
+          limit: LIST_PAGE,
+          sortBy: { column: "created_at", order: "desc" },
+        });
+        return { folder, items: (data ?? []) as StorageEntry[] };
+      });
 
       const allFiles: BerkasItem[] = [];
       const folderMap = new Map<string, BerkasItem[]>();
       let totalBytes = 0;
 
-      // Group files into subfolders
-      for (const item of rootItems || []) {
-        if (!item.id && item.name) {
-          // Folder - list contents
-          const { data: subFiles } = await supabase.storage
-            .from("foto-kehadiran")
-            .list(item.name, { limit: 100, sortBy: { column: "created_at", order: "desc" } });
-
-          if (subFiles && subFiles.length > 0) {
-            const folderFiles: BerkasItem[] = [];
-
-            for (const sub of subFiles) {
-              const fullPath = `${item.name}/${sub.name}`;
-              const size = sub.metadata?.size || 0;
-              totalBytes += size;
-
-              // Generate signed URL (valid for 24 hours)
-              const { data: signed } = await supabase.storage
-                .from("foto-kehadiran")
-                .createSignedUrl(fullPath, 86400);
-
-              const berkasItem: BerkasItem = {
-                name: sub.name,
-                id: sub.id,
-                size: size,
-                created_at: sub.created_at,
-                url: signed?.signedUrl,
-                folder: item.name,
-                fullPath,
-              };
-
-              folderFiles.push(berkasItem);
-              allFiles.push(berkasItem);
-            }
-
-            folderMap.set(item.name, folderFiles);
-          }
-        } else if (item.name) {
-          // Root level file
-          const size = item.metadata?.size || 0;
+      for (const { folder, items } of folderContents) {
+        const files: BerkasItem[] = [];
+        for (const sub of items) {
+          if (!sub.id) continue; // abaikan subfolder bersarang
+          const size = sub.metadata?.size || 0;
           totalBytes += size;
-          const { data: signed } = await supabase.storage
-            .from("foto-kehadiran")
-            .createSignedUrl(item.name, 86400);
-
-          const berkasItem: BerkasItem = {
-            name: item.name,
-            id: item.id,
-            size: size,
-            created_at: item.created_at,
-            url: signed?.signedUrl,
-            fullPath: item.name,
+          const item: BerkasItem = {
+            name: sub.name,
+            id: sub.id,
+            size,
+            created_at: sub.created_at,
+            folder,
+            fullPath: `${folder}/${sub.name}`,
           };
-
-          allFiles.push(berkasItem);
-
-          const existingRoot = folderMap.get("root") || [];
-          existingRoot.push(berkasItem);
-          folderMap.set("root", existingRoot);
+          files.push(item);
+          allFiles.push(item);
         }
+        if (files.length > 0) folderMap.set(folder, files);
       }
 
-      // 2. Fetch visitor info from database for each folder (kunjunganId)
-      const folderIds = Array.from(folderMap.keys()).filter((id) => id !== "root");
-      const kunjunganDataMap = new Map<string, any>();
+      if (rootFiles.length > 0) {
+        const files: BerkasItem[] = rootFiles.map((item) => {
+          const size = item.metadata?.size || 0;
+          totalBytes += size;
+          const berkas: BerkasItem = {
+            name: item.name,
+            id: item.id ?? undefined,
+            size,
+            created_at: item.created_at,
+            fullPath: item.name,
+          };
+          allFiles.push(berkas);
+          return berkas;
+        });
+        folderMap.set("root", files);
+      }
 
-      if (folderIds.length > 0) {
-        const { data: kunjunganList } = await supabase
+      // 3. Signed URL dalam batch (satu request per 200 file, bukan satu per file)
+      const pathChunks: string[][] = [];
+      for (let i = 0; i < allFiles.length; i += 200) {
+        pathChunks.push(allFiles.slice(i, i + 200).map((f) => f.fullPath));
+      }
+      const signedResults = await mapInChunks(pathChunks, 3, async (paths) => {
+        const { data } = await bucket.createSignedUrls(paths, 86400);
+        return data ?? [];
+      });
+      const urlByPath = new Map<string, string>();
+      for (const batch of signedResults) {
+        for (const s of batch) {
+          if (s.path && s.signedUrl) urlByPath.set(s.path, s.signedUrl);
+        }
+      }
+      for (const f of allFiles) f.url = urlByPath.get(f.fullPath);
+
+      // 4. Info tamu dari database (hanya folder ber-UUID, dipecah agar query tidak terlalu panjang)
+      const folderIds = [...folderMap.keys()].filter((id) => UUID_RE.test(id));
+      const kunjunganDataMap = new Map<string, KunjunganBerkasRow>();
+      const idChunks: string[][] = [];
+      for (let i = 0; i < folderIds.length; i += 100) idChunks.push(folderIds.slice(i, i + 100));
+
+      const kunjunganChunks = await mapInChunks(idChunks, 3, async (ids) => {
+        const { data } = await supabase
           .from("kunjungan")
           .select(`
             id,
@@ -144,16 +186,14 @@ export async function getDaftarBerkas(): Promise<DaftarBerkasResponse> {
             keperluan,
             status
           `)
-          .in("id", folderIds);
-
-        if (kunjunganList) {
-          for (const k of kunjunganList) {
-            kunjunganDataMap.set(k.id, k);
-          }
-        }
+          .in("id", ids);
+        return (data ?? []) as unknown as KunjunganBerkasRow[];
+      });
+      for (const chunk of kunjunganChunks) {
+        for (const k of chunk) kunjunganDataMap.set(k.id, k);
       }
 
-      // 3. Assemble structured folders
+      // 5. Susun folder
       const folders: BerkasFolder[] = [];
 
       for (const [folderId, files] of folderMap.entries()) {
@@ -171,24 +211,24 @@ export async function getDaftarBerkas(): Promise<DaftarBerkasResponse> {
         }
 
         const kData = kunjunganDataMap.get(folderId);
+        const instansiRel = Array.isArray(kData?.instansi) ? kData?.instansi[0] : kData?.instansi;
 
         folders.push({
           id: folderId,
           kunjunganId: folderId,
           namaTamu: kData?.nama || `Kunjungan Tamu (#${folderId.slice(0, 8)})`,
-          instansiNama:
-            kData?.instansi?.nama || kData?.instansi_lainnya || "Masyarakat / Tamu Umum",
+          instansiNama: instansiRel?.nama || kData?.instansi_lainnya || "Masyarakat / Tamu Umum",
           nomorUrut: kData?.nomor_urut,
           tanggal: kData?.tanggal || files[0]?.created_at?.split("T")[0],
           waktuMasuk: kData?.waktu_masuk,
-          keperluan: kData?.keperluan,
+          keperluan: kData?.keperluan ?? undefined,
           status: kData?.status,
           files,
           totalBytes: folderSize,
         });
       }
 
-      // Sort folders: newest visit first
+      // Kunjungan terbaru lebih dulu
       folders.sort((a, b) => {
         if (a.id === "root") return 1;
         if (b.id === "root") return -1;
@@ -205,24 +245,20 @@ export async function getDaftarBerkas(): Promise<DaftarBerkasResponse> {
         totalSize: totalBytes,
         maxSizeBytes: SUPABASE_FREE_STORAGE_LIMIT_BYTES,
       };
-    } catch (err: any) {
-      return {
-        success: false,
-        folders: [],
-        files: [],
-        totalSize: 0,
-        maxSizeBytes: SUPABASE_FREE_STORAGE_LIMIT_BYTES,
-        error: err.message,
-      };
+    } catch (err) {
+      return emptyResponse(err instanceof Error ? err.message : "Gagal memuat berkas.");
     }
   }
 
-  // Demo fallback data if Supabase is offline
+  if (!isDemoAllowed()) return emptyResponse("Layanan belum dikonfigurasi.");
+
+  // Demo fallback data (hanya development / ALLOW_DEMO_MODE=true)
+  const today = new Date().toISOString();
   const demoFiles1: BerkasItem[] = [
     {
       name: "foto-tamu-1.jpg",
       size: 245000,
-      created_at: new Date().toISOString(),
+      created_at: today,
       url: "https://images.unsplash.com/photo-1544717305-2782549b5136?w=600",
       folder: "demo-tamu-01",
       fullPath: "demo-tamu-01/foto-tamu-1.jpg",
@@ -230,7 +266,7 @@ export async function getDaftarBerkas(): Promise<DaftarBerkasResponse> {
     {
       name: "foto-tamu-2.jpg",
       size: 260000,
-      created_at: new Date().toISOString(),
+      created_at: today,
       url: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600",
       folder: "demo-tamu-01",
       fullPath: "demo-tamu-01/foto-tamu-2.jpg",
@@ -241,7 +277,7 @@ export async function getDaftarBerkas(): Promise<DaftarBerkasResponse> {
     {
       name: "foto-tamu-3.jpg",
       size: 198000,
-      created_at: new Date().toISOString(),
+      created_at: today,
       url: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=600",
       folder: "demo-tamu-02",
       fullPath: "demo-tamu-02/foto-tamu-3.jpg",
@@ -257,7 +293,7 @@ export async function getDaftarBerkas(): Promise<DaftarBerkasResponse> {
         namaTamu: "I Wayan Sudarsana",
         instansiNama: "Badan Kepegawaian dan Pengembangan SDM (BKPSDM)",
         nomorUrut: 1,
-        tanggal: new Date().toISOString().split("T")[0],
+        tanggal: today.split("T")[0],
         keperluan: "Koordinasi tindak lanjut LHP tahunan",
         status: "tercatat",
         files: demoFiles1,
@@ -269,7 +305,7 @@ export async function getDaftarBerkas(): Promise<DaftarBerkasResponse> {
         namaTamu: "Ni Kadek Ariani",
         instansiNama: "Badan Pengelola Keuangan, Pendapatan dan Aset Daerah (BPKPAD)",
         nomorUrut: 2,
-        tanggal: new Date().toISOString().split("T")[0],
+        tanggal: today.split("T")[0],
         keperluan: "Konsultasi sistem pelaporan aset",
         status: "tercatat",
         files: demoFiles2,
@@ -283,74 +319,64 @@ export async function getDaftarBerkas(): Promise<DaftarBerkasResponse> {
 }
 
 export async function hapusBerkas(path: string): Promise<{ success: boolean; error?: string }> {
+  const auth = await authorize("admin");
+  if (!auth.ok) return { success: false, error: auth.error };
+
   if (isSupabaseConfigured()) {
     try {
       const supabase = await createClient();
 
-      // Clean path if any query params or prefix
-      const cleanPath = path.split("?")[0].replace(/^foto-kehadiran\//, "").trim();
+      const cleanPath = cleanStoragePath(path);
+      if (!cleanPath) return { success: false, error: "Path berkas tidak valid." };
 
-      // 1. Delete physical file from Supabase storage
-      const { error } = await supabase.storage.from("foto-kehadiran").remove([cleanPath]);
+      // 1. Hapus file fisik
+      const { error } = await supabase.storage.from(FOTO_BUCKET).remove([cleanPath]);
       if (error) return { success: false, error: error.message };
 
-      // 2. Also delete metadata record in foto_kehadiran table if present
-      await supabase
-        .from("foto_kehadiran")
-        .delete()
-        .or(`storage_path.eq.${cleanPath},storage_path.like.%${cleanPath}%`);
-
-      revalidatePath("/dashboard/berkas");
-      revalidatePath("/dashboard/kunjungan");
-      revalidatePath("/dashboard");
-      return { success: true };
-    } catch (err: any) {
-      return { success: false, error: err.message };
+      // 2. Hapus catatan metadata (pencocokan persis, tanpa wildcard)
+      await supabase.from("foto_kehadiran").delete().eq("storage_path", cleanPath);
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : "Gagal menghapus berkas." };
     }
   }
 
   revalidatePath("/dashboard/berkas");
+  revalidatePath("/dashboard");
   return { success: true };
 }
 
 export async function hapusFolderBerkas(folderId: string): Promise<{ success: boolean; error?: string }> {
+  const auth = await authorize("admin");
+  if (!auth.ok) return { success: false, error: auth.error };
+
   if (isSupabaseConfigured()) {
     try {
       const supabase = await createClient();
 
-      // List all files in this folder
-      const { data: subFiles, error: listErr } = await supabase.storage
-        .from("foto-kehadiran")
-        .list(folderId, { limit: 100 });
+      const folder = cleanStoragePath(folderId);
+      if (!folder || folder.includes("/")) return { success: false, error: "ID folder tidak valid." };
 
-      if (listErr) return { success: false, error: listErr.message };
-
-      if (subFiles && subFiles.length > 0) {
-        const pathsToDelete = subFiles.map((f: any) => `${folderId}/${f.name}`);
-        const { error: removeErr } = await supabase.storage
-          .from("foto-kehadiran")
-          .remove(pathsToDelete);
-
-        if (removeErr) return { success: false, error: removeErr.message };
-
-        // Clean db records
-        for (const path of pathsToDelete) {
-          await supabase
-            .from("foto_kehadiran")
-            .delete()
-            .or(`storage_path.eq.${path},storage_path.like.%${path}%`);
-        }
+      const bucket = supabase.storage.from(FOTO_BUCKET);
+      const pathsToDelete: string[] = [];
+      for (let offset = 0; ; offset += LIST_PAGE) {
+        const { data, error: listErr } = await bucket.list(folder, { limit: LIST_PAGE, offset });
+        if (listErr) return { success: false, error: listErr.message };
+        pathsToDelete.push(...(data ?? []).filter((f) => f.id).map((f) => `${folder}/${f.name}`));
+        if (!data || data.length < LIST_PAGE) break;
       }
 
-      revalidatePath("/dashboard/berkas");
-      revalidatePath("/dashboard/kunjungan");
-      revalidatePath("/dashboard");
-      return { success: true };
-    } catch (err: any) {
-      return { success: false, error: err.message };
+      if (pathsToDelete.length > 0) {
+        const { error: removeErr } = await bucket.remove(pathsToDelete);
+        if (removeErr) return { success: false, error: removeErr.message };
+
+        await supabase.from("foto_kehadiran").delete().in("storage_path", pathsToDelete);
+      }
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : "Gagal menghapus folder." };
     }
   }
 
   revalidatePath("/dashboard/berkas");
+  revalidatePath("/dashboard");
   return { success: true };
 }

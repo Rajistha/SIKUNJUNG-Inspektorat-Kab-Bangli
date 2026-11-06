@@ -134,6 +134,9 @@ CREATE TRIGGER on_foto_deleted
     EXECUTE FUNCTION public.handle_foto_deleted();
 
 -- 11. Row Level Security (RLS)
+-- Di sini hanya RLS dasar + akses baca publik untuk data master aktif.
+-- Policy staf/admin (berbasis role), RPC pencatatan kunjungan, dan policy storage
+-- ada di supabase/migration_hardening.sql, WAJIB dijalankan setelah file ini.
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.instansi ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bidang ENABLE ROW LEVEL SECURITY;
@@ -141,42 +144,11 @@ ALTER TABLE public.kunjungan ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.foto_kehadiran ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.qr_token ENABLE ROW LEVEL SECURITY;
 
--- Instansi & Bidang: Public read
 DROP POLICY IF EXISTS "Public can view active instansi" ON public.instansi;
 CREATE POLICY "Public can view active instansi" ON public.instansi FOR SELECT USING (is_active = true);
-DROP POLICY IF EXISTS "Authenticated can manage instansi" ON public.instansi;
-CREATE POLICY "Authenticated can manage instansi" ON public.instansi FOR ALL TO authenticated USING (true);
 
 DROP POLICY IF EXISTS "Public can view active bidang" ON public.bidang;
 CREATE POLICY "Public can view active bidang" ON public.bidang FOR SELECT USING (is_active = true);
-DROP POLICY IF EXISTS "Authenticated can manage bidang" ON public.bidang;
-CREATE POLICY "Authenticated can manage bidang" ON public.bidang FOR ALL TO authenticated USING (true);
-
--- Kunjungan: Public can insert (from QR form), authenticated can read/update/delete
-DROP POLICY IF EXISTS "Public can insert kunjungan" ON public.kunjungan;
-CREATE POLICY "Public can insert kunjungan" ON public.kunjungan FOR INSERT WITH CHECK (true);
-DROP POLICY IF EXISTS "Authenticated can manage kunjungan" ON public.kunjungan;
-CREATE POLICY "Authenticated can manage kunjungan" ON public.kunjungan FOR ALL TO authenticated USING (true);
-
--- Foto: Authenticated only
-DROP POLICY IF EXISTS "Authenticated can manage foto" ON public.foto_kehadiran;
-CREATE POLICY "Authenticated can manage foto" ON public.foto_kehadiran FOR ALL TO authenticated USING (true);
-
--- Users: Authenticated can view without recursion
-DROP POLICY IF EXISTS "Admin can manage users" ON public.users;
-DROP POLICY IF EXISTS "Users can view profile" ON public.users;
-DROP POLICY IF EXISTS "Users can view profiles" ON public.users;
-
-CREATE POLICY "Users can view profiles"
-ON public.users FOR SELECT
-TO authenticated
-USING (true);
-
-CREATE POLICY "Users can update own profile"
-ON public.users FOR UPDATE
-TO authenticated
-USING (id = auth.uid())
-WITH CHECK (id = auth.uid());
 
 -- ==============================================================================
 -- 12. KODE SQL BUCKET STORAGE: foto-kehadiran
@@ -196,20 +168,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 -- Catatan: RLS pada storage.objects sudah aktif secara bawaan di Supabase.
 
-DROP POLICY IF EXISTS "Petugas can upload foto" ON storage.objects;
-CREATE POLICY "Petugas can upload foto"
-ON storage.objects FOR INSERT TO authenticated
-WITH CHECK (bucket_id = 'foto-kehadiran');
-
-DROP POLICY IF EXISTS "Petugas can read foto" ON storage.objects;
-CREATE POLICY "Petugas can read foto"
-ON storage.objects FOR SELECT TO authenticated
-USING (bucket_id = 'foto-kehadiran');
-
-DROP POLICY IF EXISTS "Petugas can delete foto" ON storage.objects;
-CREATE POLICY "Petugas can delete foto"
-ON storage.objects FOR DELETE TO authenticated
-USING (bucket_id = 'foto-kehadiran');
+-- Policy storage.objects (khusus staf aktif) didefinisikan di migration_hardening.sql.
 
 -- ==============================================================================
 -- 13. SEED DATA: Instansi & Bidang
@@ -247,115 +206,17 @@ INSERT INTO public.bidang (nama, urutan, is_active) VALUES
 ON CONFLICT (nama) DO NOTHING;
 
 -- ==============================================================================
--- 14. PEMBUATAN AKUN ADMINISTRATOR UTAMA
--- Email: admin@bangli.go.id
--- Password: inspektorat234!
+-- AKUN ADMINISTRATOR PERTAMA
+-- Kredensial TIDAK lagi ditulis di repo. Buat admin pertama secara manual:
+--   1. Supabase Dashboard > Authentication > Users > "Add user" (centang Auto Confirm),
+--      gunakan password yang kuat dan unik.
+--   2. Jalankan SQL berikut (ganti email & nama):
+--
+--   INSERT INTO public.users (id, nama, email, role, is_active)
+--   SELECT id, 'Administrator', email, 'admin', true
+--   FROM auth.users WHERE email = 'ganti-dengan-email-admin@instansi.go.id'
+--   ON CONFLICT (id) DO UPDATE SET role = 'admin', is_active = true;
+--
+-- Akun petugas berikutnya dibuat dari menu Pengguna di dashboard.
+-- Setelah ini jalankan supabase/migration_hardening.sql.
 -- ==============================================================================
-DO $$
-DECLARE
-    admin_uuid UUID := 'a0000000-0000-0000-0000-000000000001'::UUID;
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'admin@bangli.go.id') THEN
-        INSERT INTO auth.users (
-            id,
-            instance_id,
-            email,
-            encrypted_password,
-            email_confirmed_at,
-            raw_app_meta_data,
-            raw_user_meta_data,
-            created_at,
-            updated_at,
-            role,
-            confirmation_token,
-            is_super_admin
-        ) VALUES (
-            admin_uuid,
-            '00000000-0000-0000-0000-000000000000',
-            'admin@bangli.go.id',
-            crypt('inspektorat234!', gen_salt('bf')),
-            now(),
-            '{"provider":"email","providers":["email"]}',
-            '{"nama":"Administrator IT Inspektorat"}',
-            now(),
-            now(),
-            'authenticated',
-            '',
-            false
-        );
-    ELSE
-        UPDATE auth.users
-        SET encrypted_password = crypt('inspektorat234!', gen_salt('bf')),
-            email_confirmed_at = COALESCE(email_confirmed_at, now()),
-            updated_at = now()
-        WHERE email = 'admin@bangli.go.id';
-
-        SELECT id INTO admin_uuid FROM auth.users WHERE email = 'admin@bangli.go.id';
-    END IF;
-
-    INSERT INTO public.users (
-        id,
-        nama,
-        email,
-        role,
-        is_active,
-        created_at
-    ) VALUES (
-        admin_uuid,
-        'Administrator IT Inspektorat',
-        'admin@bangli.go.id',
-        'admin',
-        true,
-        now()
-    )
-    ON CONFLICT (id) DO UPDATE SET
-        nama = 'Administrator IT Inspektorat',
-        role = 'admin',
-        is_active = true;
-
-    -- Akun Petugas Resepsionis default (petugas@bangli.go.id / petugas123)
-    IF NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'petugas@bangli.go.id') THEN
-        INSERT INTO auth.users (
-            id,
-            instance_id,
-            email,
-            encrypted_password,
-            email_confirmed_at,
-            raw_app_meta_data,
-            raw_user_meta_data,
-            created_at,
-            updated_at,
-            role,
-            confirmation_token
-        ) VALUES (
-            'b0000000-0000-0000-0000-000000000002'::UUID,
-            '00000000-0000-0000-0000-000000000000',
-            'petugas@bangli.go.id',
-            crypt('petugas123', gen_salt('bf')),
-            now(),
-            '{"provider":"email","providers":["email"]}',
-            '{"nama":"Ni Made Ayu Resepsionis"}',
-            now(),
-            now(),
-            'authenticated',
-            ''
-        );
-
-        INSERT INTO public.users (
-            id,
-            nama,
-            email,
-            role,
-            is_active,
-            created_at
-        ) VALUES (
-            'b0000000-0000-0000-0000-000000000002'::UUID,
-            'Ni Made Ayu Resepsionis',
-            'petugas@bangli.go.id',
-            'petugas',
-            true,
-            now()
-        )
-        ON CONFLICT (id) DO NOTHING;
-    END IF;
-END $$;

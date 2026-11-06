@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Instansi, Bidang } from "@/lib/types";
+import { Instansi, Bidang, Kunjungan } from "@/lib/types";
 import { tambahKunjungan } from "@/lib/actions/kunjungan";
 import { useRouter } from "next/navigation";
 import { Mars, Venus, Plus, Minus } from "lucide-react";
@@ -14,7 +14,7 @@ interface KunjunganFormProps {
   instansiList: Instansi[];
   bidangList: Bidang[];
   sumber?: "qr" | "petugas";
-  onSuccess?: (newKunjungan: any) => void;
+  onSuccess?: (newKunjungan?: Kunjungan) => void;
   isModal?: boolean;
 }
 
@@ -23,7 +23,6 @@ export function KunjunganForm({
   bidangList,
   sumber = "qr",
   onSuccess,
-  isModal = false,
 }: KunjunganFormProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
@@ -36,7 +35,8 @@ export function KunjunganForm({
   const [keperluan, setKeperluan] = useState("");
   const [jumlahLakiLaki, setJumlahLakiLaki] = useState(1);
   const [jumlahPerempuan, setJumlahPerempuan] = useState(0);
-  const [consent, setConsent] = useState(true);
+  const [consent, setConsent] = useState(false);
+  const [website, setWebsite] = useState(""); // honeypot anti-bot (tersembunyi)
 
   // Errors
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -92,15 +92,18 @@ export function KunjunganForm({
     try {
       const res = await tambahKunjungan({
         nama: nama.trim(),
-        jenis_kelamin: komposisiGender as any,
+        jenis_kelamin: komposisiGender,
         no_telepon: telepon.trim() || undefined,
         instansi_id: isLainnya ? undefined : instansiId,
         instansi_lainnya: isLainnya ? instansiLainnya.trim() : undefined,
         bidang_id: bidangId,
         keperluan: keperluan.trim(),
         jumlah_tamu: totalTamu,
-        consent: true,
+        jumlah_laki: jumlahLakiLaki,
+        jumlah_perempuan: jumlahPerempuan,
+        consent,
         sumber,
+        website,
       });
 
       if (!res.success) {
@@ -122,8 +125,8 @@ export function KunjunganForm({
         });
         router.push(`/tamu/selesai?${qParams.toString()}`);
       }
-    } catch (err: any) {
-      toast.error(err.message || "Terjadi kesalahan sistem.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Terjadi kesalahan sistem.");
     } finally {
       setIsLoading(false);
     }
@@ -131,6 +134,18 @@ export function KunjunganForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Honeypot: tidak terlihat oleh manusia, sering diisi bot */}
+      <input
+        type="text"
+        name="website"
+        tabIndex={-1}
+        autoComplete="off"
+        aria-hidden="true"
+        value={website}
+        onChange={(e) => setWebsite(e.target.value)}
+        className="absolute -left-[9999px] h-0 w-0 opacity-0"
+      />
+
       {/* 1. Nama Lengkap */}
       <Input
         label="Nama Lengkap Tamu"
